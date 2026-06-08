@@ -1,7 +1,6 @@
 import {
   ArrowRight,
   Gift,
-  Heart,
   Leaf,
   MessageCircle,
   PackageCheck,
@@ -12,7 +11,7 @@ import {
 import { useMemo, useState } from "react";
 
 const whatsappNumber = "393711883722";
-const categories = ["Tutti", "Bouquet", "Eventi", "Regali", "Personalizzati"] as const;
+const categories = ["Tutti", "Bouquet", "Bomboniere", "Eventi", "Regali", "Personalizzati"] as const;
 
 type Category = (typeof categories)[number];
 
@@ -56,13 +55,35 @@ const products: Product[] = [
   {
     id: "essenza-petit",
     title: "Essenza Petit",
-    category: "Eventi",
+    category: "Bomboniere",
     price: "18€ cad.",
-    description: "Mini bouquet profumato pensato come bomboniera per eventi e occasioni speciali.",
+    description: "Bouquet in cera profumata pensato per bomboniere ed eventi.",
     variants: "Colori: neutro, salvia, azzurro, rosa.",
     note: "Ordine minimo: 10 pezzi.",
     images: ["/assets/catalog/essenza-petit.jpeg"],
     accent: "#d5b37c",
+  },
+  {
+    id: "candela-botanica",
+    title: "Candela Botanica",
+    category: "Bomboniere",
+    price: "13€ cad.",
+    description: "Candela artigianale in cera di soia decorata con elementi botanici.",
+    variants: "Colori: neutro, salvia, azzurro, rosa.",
+    note: "Ordine minimo: 10 pezzi.",
+    images: ["/assets/catalog/candela-botanica.jpeg"],
+    accent: "#8fa184",
+  },
+  {
+    id: "candela-rose",
+    title: "Candela Rosé",
+    category: "Bomboniere",
+    price: "18€ cad.",
+    description: "Candela profumata con rosa in cera e campana in vetro personalizzabile per eventi e cerimonie.",
+    variants: "Personalizzabile per palette, evento e dettagli coordinati.",
+    note: "Ordine minimo: 10 pezzi.",
+    images: ["/assets/catalog/candela-rose.jpeg"],
+    accent: "#d493a3",
   },
   {
     id: "segnaposto-floreale-personalizzato",
@@ -147,12 +168,19 @@ export default function App() {
 
   return (
     <>
+      <div className="announcement-bar">
+        <span>Catalogo artigianale profumato</span>
+        <a href={createWhatsAppLink()} target="_blank" rel="noreferrer">
+          Ordini WhatsApp
+        </a>
+      </div>
+
       <header className="site-header">
         <a className="brand" href="#top" aria-label="Adornabile home">
           <span className="brand-mark">A</span>
           <span>
             <strong>Adornabile</strong>
-            <small>Handmade catalog</small>
+            <small>Catalogo</small>
           </span>
         </a>
 
@@ -194,8 +222,8 @@ export default function App() {
 
         <section className="signal-strip" aria-label="Punti di forza">
           <div>
-            <Heart size={23} aria-hidden="true" />
-            <span>Fiori in cera profumata</span>
+            <Leaf size={23} aria-hidden="true" />
+            <span>Ispirazione botanica</span>
           </div>
           <div>
             <Palette size={23} aria-hidden="true" />
@@ -203,7 +231,7 @@ export default function App() {
           </div>
           <div>
             <PackageCheck size={23} aria-hidden="true" />
-            <span>Prodotti per eventi e regali</span>
+            <span>Prodotti per eventi e bomboniere</span>
           </div>
         </section>
 
@@ -214,8 +242,8 @@ export default function App() {
               <h2>Un catalogo essenziale, pensato per scegliere e ordinare in chat.</h2>
             </div>
             <p>
-              Titoli, foto, descrizioni e prezzi sono stati estratti dal catalogo Adornabile. Ogni
-              scheda apre WhatsApp con un messaggio già pronto per richiedere disponibilità e varianti.
+              Una selezione curata di bouquet, candele e dettagli floreali pensata per eventi,
+              bomboniere e regali personali.
             </p>
           </div>
 
@@ -308,7 +336,7 @@ export default function App() {
             </p>
             <div className="atelier-stats" aria-label="Dettagli catalogo">
               <span>
-                <strong>7</strong>
+                <strong>{products.length}</strong>
                 prodotti in catalogo
               </span>
               <span>
@@ -327,10 +355,10 @@ export default function App() {
           <img src="/assets/catalog/aura.jpeg" alt="Candela Aura sotto campana in vetro" />
           <div>
             <p className="eyebrow">Ordini WhatsApp</p>
-            <h2>Apri la chat e invia il messaggio gia pronto.</h2>
+            <h2>Un ordine semplice, personale, seguito in chat.</h2>
             <p>
-              Il pulsante porta direttamente al numero 3711883722 con un testo di richiesta ordine:
-              basta inviarlo e completare dettagli, colori e quantità in conversazione.
+              Scrivi direttamente ad Adornabile per definire prodotto, colori, quantità e tempi di
+              consegna con un messaggio già predisposto.
             </p>
             <a className="primary-link" href={createWhatsAppLink()} target="_blank" rel="noreferrer">
               <MessageCircle size={19} aria-hidden="true" />
