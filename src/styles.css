@@ -700,6 +700,11 @@ img {
   object-fit: cover;
 }
 
+.modal-main-image.contain {
+  object-fit: contain;
+  background: var(--rose-40);
+}
+
 .modal-main-video {
   object-fit: contain;
   background: #211c1e;

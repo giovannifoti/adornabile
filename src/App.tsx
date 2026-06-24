@@ -16,7 +16,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 
 const whatsappNumber = "393711883722";
-const categories = ["Tutti", "Bouquet", "Regali", "Personalizzati"] as const;
+const categories = ["Tutti", "Bouquet", "Personalizzati"] as const;
 
 type Category = (typeof categories)[number];
 
@@ -32,6 +32,7 @@ type Product = {
   note: string;
   images: string[];
   video?: string;
+  imageFit?: "cover" | "contain";
   accent: string;
 };
 
@@ -68,7 +69,8 @@ const products: Product[] = [
     benefits: ["Effetto bouquet realistico", "Composizione verticale", "Quattro palette disponibili"],
     variants: "Colori: neutro, salvia, azzurro, rosa.",
     note: "Unica dimensione.",
-    images: ["/assets/catalog/essenza.jpeg", "/assets/catalog/essenza-palette-salvia.jpeg"],
+    images: ["/assets/catalog/essenza-palette-salvia.jpeg", "/assets/catalog/essenza.jpeg"],
+    imageFit: "contain",
     accent: "#e58ba2",
   },
   {
@@ -85,35 +87,6 @@ const products: Product[] = [
     images: ["/assets/catalog/essenza-petit.jpeg"],
     video: "/assets/catalog/essenza-petit.mp4",
     accent: "#9baa91",
-  },
-  {
-    id: "tart-botaniche-profumate",
-    title: "Tart Botaniche Profumate",
-    category: "Regali",
-    price: "5€ cad.",
-    description:
-      "Tart profumate decorate con elementi botanici e floreali, pensate come piccolo pensiero, mini bomboniera o dettaglio profumato.",
-    detail:
-      "Un gesto piccolo ma curato, da donare singolarmente o inserire in una composizione. Forme e decorazioni possono seguire il tema scelto.",
-    benefits: ["Piccolo formato profumato", "Decorazioni botaniche", "Forme personalizzabili"],
-    variants: "Forme, colori e decorazioni personalizzabili.",
-    note: "Ordine minimo: 6 pezzi.",
-    images: ["/assets/catalog/tart-botaniche.jpeg"],
-    accent: "#6d9da8",
-  },
-  {
-    id: "aura",
-    title: "Aura",
-    category: "Regali",
-    price: "25€",
-    description: "Candela artigianale in cera di soia sotto campana in vetro, decorata con dettagli botanici.",
-    detail:
-      "Una candela da regalare e lasciare in vista: la campana in vetro custodisce la luce e i dettagli botanici, creando un'atmosfera intima e raffinata.",
-    benefits: ["Cera di soia", "Campana in vetro", "Dettagli botanici"],
-    variants: "Personalizzabile nei dettagli decorativi.",
-    note: "Idea regalo profumata.",
-    images: ["/assets/catalog/aura.jpeg"],
-    accent: "#8ab182",
   },
   {
     id: "lettera-floreale",
@@ -230,7 +203,7 @@ export default function App() {
             <h1>Adornabile Handmade</h1>
             <p>
               Bouquet profumati, candele botaniche e dettagli personalizzati in cera profumata per
-              regali, eventi e piccoli rituali di bellezza quotidiana.
+              occasioni speciali e piccoli rituali di bellezza quotidiana.
             </p>
             <div className="hero-actions">
               <a className="primary-link" href="#catalogo">
@@ -256,7 +229,7 @@ export default function App() {
           </div>
           <div>
             <PackageCheck size={23} aria-hidden="true" />
-            <span>Prodotti per regali e occasioni speciali</span>
+            <span>Creazioni per occasioni speciali</span>
           </div>
         </section>
 
@@ -267,8 +240,8 @@ export default function App() {
               <h2>Un catalogo essenziale, pensato per scegliere e ordinare in chat.</h2>
             </div>
             <p>
-              Una selezione curata di bouquet, candele e dettagli floreali pensata per occasioni
-              speciali e regali personali.
+              Una selezione curata di bouquet e dettagli floreali pensata per occasioni speciali e
+              composizioni personali.
             </p>
           </div>
 
@@ -302,10 +275,8 @@ export default function App() {
           <div className="catalog-grid">
             {filteredProducts.map((product) => (
               <article className="product-card" key={product.id}>
-                <div className={product.images.length > 1 ? "product-media multi" : "product-media"}>
-                  {product.images.slice(0, 2).map((image) => (
-                    <img src={image} alt={product.title} key={image} />
-                  ))}
+                <div className="product-media">
+                  <img src={product.images[0]} alt={product.title} />
                   <span className="product-category">{product.category}</span>
                   <span className="product-availability">
                     <Clock size={14} aria-hidden="true" />
@@ -368,8 +339,8 @@ export default function App() {
           </div>
           <div className="atelier-copy">
             <p>
-              Le linee del catalogo includono bouquet, candele e regali personalizzati. La palette può
-              essere costruita su toni neutri, salvia, azzurro o rosa, con dettagli botanici coordinati.
+              Le linee del catalogo includono bouquet e creazioni personalizzate. La palette può essere
+              costruita su toni neutri, salvia, azzurro o rosa, con dettagli botanici coordinati.
             </p>
             <div className="atelier-stats" aria-label="Dettagli catalogo">
               <span>
@@ -389,7 +360,7 @@ export default function App() {
         </section>
 
         <section className="order-section" id="ordini">
-          <img src="/assets/catalog/aura.jpeg" alt="Candela Aura sotto campana in vetro" />
+          <img src="/assets/catalog/essenza-pura-3.jpeg" alt="Bouquet profumato Essenza Pura" />
           <div>
             <p className="eyebrow">Ordini WhatsApp</p>
             <h2>Un ordine semplice, personale, seguito in chat.</h2>
@@ -443,7 +414,7 @@ export default function App() {
                 </video>
               ) : (
                 <img
-                  className="modal-main-image"
+                  className={selectedProduct.imageFit === "contain" ? "modal-main-image contain" : "modal-main-image"}
                   src={selectedProduct.images[selectedMediaIndex]}
                   alt={selectedProduct.title}
                 />
