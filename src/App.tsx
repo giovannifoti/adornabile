@@ -15,7 +15,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 
 const whatsappNumber = "393711883722";
-const categories = ["Tutti", "Bouquet", "Bomboniere", "Eventi", "Regali", "Personalizzati"] as const;
+const categories = ["Tutti", "Bouquet", "Regali", "Personalizzati"] as const;
 
 type Category = (typeof categories)[number];
 
@@ -63,63 +63,6 @@ const products: Product[] = [
     note: "Unica dimensione.",
     images: ["/assets/catalog/essenza.jpeg"],
     accent: "#e58ba2",
-  },
-  {
-    id: "essenza-petit",
-    title: "Essenza Petit",
-    category: "Bomboniere",
-    price: "18€ cad.",
-    description: "Bouquet in cera profumata pensato per bomboniere ed eventi.",
-    detail:
-      "Un piccolo bouquet pensato per lasciare agli ospiti un ricordo profumato e decorativo, coordinabile ai colori e allo stile dell'evento.",
-    benefits: ["Formato bomboniera", "Ricordo profumato", "Palette coordinabile"],
-    variants: "Colori: neutro, salvia, azzurro, rosa.",
-    note: "Ordine minimo: 10 pezzi.",
-    images: ["/assets/catalog/essenza-petit.jpeg"],
-    accent: "#d5b37c",
-  },
-  {
-    id: "candela-botanica",
-    title: "Candela Botanica",
-    category: "Bomboniere",
-    price: "13€ cad.",
-    description: "Candela artigianale in cera di soia decorata con elementi botanici.",
-    detail:
-      "Una candela essenziale e delicata, impreziosita da elementi botanici che trasformano ogni bomboniera in un piccolo oggetto da esporre.",
-    benefits: ["Cera di soia", "Dettagli botanici", "Palette personalizzabile"],
-    variants: "Colori: neutro, salvia, azzurro, rosa.",
-    note: "Ordine minimo: 10 pezzi.",
-    images: ["/assets/catalog/candela-botanica.jpeg"],
-    accent: "#8fa184",
-  },
-  {
-    id: "candela-rose",
-    title: "Candela Rosé",
-    category: "Bomboniere",
-    price: "18€ cad.",
-    description: "Candela profumata con rosa in cera e campana in vetro personalizzabile per eventi e cerimonie.",
-    detail:
-      "La rosa in cera diventa il centro di una bomboniera romantica e luminosa, protetta dalla campana in vetro e coordinabile alla cerimonia.",
-    benefits: ["Rosa in cera profumata", "Campana in vetro", "Dettagli personalizzabili"],
-    variants: "Personalizzabile per palette, evento e dettagli coordinati.",
-    note: "Ordine minimo: 10 pezzi.",
-    images: ["/assets/catalog/candela-rose.jpeg"],
-    accent: "#d493a3",
-  },
-  {
-    id: "segnaposto-floreale-personalizzato",
-    title: "Segnaposto Floreale Personalizzato",
-    category: "Eventi",
-    price: "2,50€ cad.",
-    description:
-      "Segnaposto personalizzato con fiore in cera profumata applicato su cartoncino con grafica e dedica coordinate all'evento.",
-    detail:
-      "Accoglie ogni invitato con un nome, una dedica e un fiore profumato. La grafica viene coordinata all'evento per rendere la tavola personale fin dal primo sguardo.",
-    benefits: ["Nome e dedica personalizzati", "Fiore profumato in cera", "Grafica coordinata"],
-    variants: "Grafica e colori personalizzabili.",
-    note: "Ordine minimo: 20 pezzi.",
-    images: ["/assets/catalog/segnaposto-floreale.jpeg"],
-    accent: "#bd8e46",
   },
   {
     id: "tart-botaniche-profumate",
@@ -290,7 +233,7 @@ export default function App() {
           </div>
           <div>
             <PackageCheck size={23} aria-hidden="true" />
-            <span>Prodotti per eventi e bomboniere</span>
+            <span>Prodotti per regali e occasioni speciali</span>
           </div>
         </section>
 
@@ -301,8 +244,8 @@ export default function App() {
               <h2>Un catalogo essenziale, pensato per scegliere e ordinare in chat.</h2>
             </div>
             <p>
-              Una selezione curata di bouquet, candele e dettagli floreali pensata per eventi,
-              bomboniere e regali personali.
+              Una selezione curata di bouquet, candele e dettagli floreali pensata per occasioni
+              speciali e regali personali.
             </p>
           </div>
 
@@ -402,9 +345,8 @@ export default function App() {
           </div>
           <div className="atelier-copy">
             <p>
-              Le linee del catalogo includono opzioni per eventi, bomboniere, segnaposto e regali
-              personalizzati. La palette può essere costruita su toni neutri, salvia, azzurro o rosa,
-              con dettagli botanici coordinati.
+              Le linee del catalogo includono bouquet, candele e regali personalizzati. La palette può
+              essere costruita su toni neutri, salvia, azzurro o rosa, con dettagli botanici coordinati.
             </p>
             <div className="atelier-stats" aria-label="Dettagli catalogo">
               <span>
