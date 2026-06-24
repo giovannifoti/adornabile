@@ -8,6 +8,7 @@ import {
   MessageCircle,
   PackageCheck,
   Palette,
+  Play,
   Search,
   Sparkles,
   X,
@@ -30,6 +31,7 @@ type Product = {
   variants: string;
   note: string;
   images: string[];
+  video?: string;
   accent: string;
 };
 
@@ -46,7 +48,12 @@ const products: Product[] = [
     benefits: ["Fiori in cera profumata", "Due dimensioni disponibili", "Palette coordinabile"],
     variants: "Colori: neutro, salvia, azzurro, rosa.",
     note: "Disponibile in due dimensioni.",
-    images: ["/assets/catalog/essenza-pura-1.jpeg", "/assets/catalog/essenza-pura-2.jpeg"],
+    images: [
+      "/assets/catalog/essenza-pura-1.jpeg",
+      "/assets/catalog/essenza-pura-2.jpeg",
+      "/assets/catalog/essenza-pura-3.jpeg",
+      "/assets/catalog/essenza-pura-media-azzurra.jpeg",
+    ],
     accent: "#9cac8a",
   },
   {
@@ -61,8 +68,23 @@ const products: Product[] = [
     benefits: ["Effetto bouquet realistico", "Composizione verticale", "Quattro palette disponibili"],
     variants: "Colori: neutro, salvia, azzurro, rosa.",
     note: "Unica dimensione.",
-    images: ["/assets/catalog/essenza.jpeg"],
+    images: ["/assets/catalog/essenza.jpeg", "/assets/catalog/essenza-palette-salvia.jpeg"],
     accent: "#e58ba2",
+  },
+  {
+    id: "essenza-petit",
+    title: "Essenza Petit",
+    category: "Bouquet",
+    price: "25€",
+    description: "Il bouquet in miniatura della collezione.",
+    detail:
+      "Un piccolo bouquet in cera profumata realizzato a mano, pensato per custodire tutta la bellezza di una composizione floreale in un formato delicato e versatile. Perfetto come dono, come ricordo di un evento o come dettaglio decorativo, nasce per portare eleganza e armonia anche nei gesti più semplici.",
+    benefits: ["Formato miniatura", "Realizzato a mano", "Palette della collezione"],
+    variants: "Disponibile nelle palette della collezione.",
+    note: "Richiedi un preventivo personalizzato se lo desideri come bouquet bomboniera.",
+    images: ["/assets/catalog/essenza-petit.jpeg"],
+    video: "/assets/catalog/essenza-petit.mp4",
+    accent: "#9baa91",
   },
   {
     id: "tart-botaniche-profumate",
@@ -97,14 +119,15 @@ const products: Product[] = [
     id: "lettera-floreale",
     title: "Lettera Floreale",
     category: "Personalizzati",
-    price: "Piccola 15€ • Media 30€",
+    price: "Piccola 15€ • Media 30€ • Grande 40€",
     description: "Iniziale decorativa personalizzata con fiori in cera profumata e dettagli floreali coordinati.",
     detail:
       "Un'iniziale costruita su misura che racconta una persona o un'occasione attraverso fiori profumati, colori scelti e una forma da conservare nel tempo.",
-    benefits: ["Iniziale su misura", "Fiori profumati in cera", "Due dimensioni disponibili"],
-    variants: "Lettera e palette personalizzabili.",
-    note: "Adatta come regalo, decorazione o dettaglio evento.",
+    benefits: ["Iniziale su misura", "Fiori profumati in cera", "Tre dimensioni disponibili"],
+    variants: "Lettera, formato e palette personalizzabili.",
+    note: "Disponibile nei formati piccolo, medio e grande.",
     images: ["/assets/catalog/lettera-floreale.jpeg"],
+    video: "/assets/catalog/lettera-floreale-grande.mp4",
     accent: "#318498",
   },
 ];
@@ -121,7 +144,7 @@ export default function App() {
   const [activeCategory, setActiveCategory] = useState<Category>("Tutti");
   const [query, setQuery] = useState("");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [selectedMediaIndex, setSelectedMediaIndex] = useState(0);
 
   useEffect(() => {
     if (!selectedProduct) return;
@@ -164,7 +187,7 @@ export default function App() {
   }, [activeCategory, query]);
 
   function openProduct(product: Product) {
-    setSelectedImageIndex(0);
+    setSelectedMediaIndex(0);
     setSelectedProduct(product);
   }
 
@@ -280,7 +303,7 @@ export default function App() {
             {filteredProducts.map((product) => (
               <article className="product-card" key={product.id}>
                 <div className={product.images.length > 1 ? "product-media multi" : "product-media"}>
-                  {product.images.map((image) => (
+                  {product.images.slice(0, 2).map((image) => (
                     <img src={image} alt={product.title} key={image} />
                   ))}
                   <span className="product-category">{product.category}</span>
@@ -413,24 +436,41 @@ export default function App() {
             </button>
 
             <div className="product-modal-gallery">
-              <img
-                className="modal-main-image"
-                src={selectedProduct.images[selectedImageIndex]}
-                alt={selectedProduct.title}
-              />
-              {selectedProduct.images.length > 1 && (
-                <div className="modal-thumbnails" aria-label={`Foto di ${selectedProduct.title}`}>
+              {selectedProduct.video && selectedMediaIndex === selectedProduct.images.length ? (
+                <video className="modal-main-image modal-main-video" controls playsInline preload="metadata">
+                  <source src={selectedProduct.video} type="video/mp4" />
+                  Il browser non supporta la riproduzione video.
+                </video>
+              ) : (
+                <img
+                  className="modal-main-image"
+                  src={selectedProduct.images[selectedMediaIndex]}
+                  alt={selectedProduct.title}
+                />
+              )}
+              {selectedProduct.images.length + (selectedProduct.video ? 1 : 0) > 1 && (
+                <div className="modal-thumbnails" aria-label={`Foto e video di ${selectedProduct.title}`}>
                   {selectedProduct.images.map((image, index) => (
                     <button
-                      className={selectedImageIndex === index ? "active" : ""}
+                      className={selectedMediaIndex === index ? "active" : ""}
                       type="button"
-                      onClick={() => setSelectedImageIndex(index)}
+                      onClick={() => setSelectedMediaIndex(index)}
                       aria-label={`Mostra foto ${index + 1} di ${selectedProduct.title}`}
                       key={image}
                     >
                       <img src={image} alt="" />
                     </button>
                   ))}
+                  {selectedProduct.video && (
+                    <button
+                      className={selectedMediaIndex === selectedProduct.images.length ? "video-thumbnail active" : "video-thumbnail"}
+                      type="button"
+                      onClick={() => setSelectedMediaIndex(selectedProduct.images.length)}
+                      aria-label={`Riproduci video della versione grande di ${selectedProduct.title}`}
+                    >
+                      <Play size={28} aria-hidden="true" />
+                    </button>
+                  )}
                 </div>
               )}
             </div>

@@ -700,6 +700,11 @@ img {
   object-fit: cover;
 }
 
+.modal-main-video {
+  object-fit: contain;
+  background: #211c1e;
+}
+
 .modal-thumbnails {
   display: flex;
   gap: 10px;
@@ -720,6 +725,13 @@ img {
 
 .modal-thumbnails button.active {
   border-color: var(--rose-720);
+}
+
+.modal-thumbnails .video-thumbnail {
+  display: grid;
+  place-items: center;
+  background: var(--ink);
+  color: var(--white);
 }
 
 .modal-thumbnails img {
