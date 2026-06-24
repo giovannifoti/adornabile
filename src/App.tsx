@@ -1,5 +1,8 @@
 import {
   ArrowRight,
+  Check,
+  Clock,
+  Eye,
   Gift,
   Leaf,
   MessageCircle,
@@ -7,8 +10,9 @@ import {
   Palette,
   Search,
   Sparkles,
+  X,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 const whatsappNumber = "393711883722";
 const categories = ["Tutti", "Bouquet", "Bomboniere", "Eventi", "Regali", "Personalizzati"] as const;
@@ -21,6 +25,8 @@ type Product = {
   category: Exclude<Category, "Tutti">;
   price: string;
   description: string;
+  detail: string;
+  benefits: string[];
   variants: string;
   note: string;
   images: string[];
@@ -35,6 +41,9 @@ const products: Product[] = [
     price: "Media 40€ • Grande 70€",
     description:
       "Bouquet profumato artigianale dalla forma compatta e decorativa, realizzato con fiori in cera profumata e dettagli floreali coordinati.",
+    detail:
+      "Una composizione compatta e scenografica che porta la delicatezza di un bouquet negli ambienti, unendo profumo e decorazione in un oggetto da conservare.",
+    benefits: ["Fiori in cera profumata", "Due dimensioni disponibili", "Palette coordinabile"],
     variants: "Colori: neutro, salvia, azzurro, rosa.",
     note: "Disponibile in due dimensioni.",
     images: ["/assets/catalog/essenza-pura-1.jpeg", "/assets/catalog/essenza-pura-2.jpeg"],
@@ -47,6 +56,9 @@ const products: Product[] = [
     price: "40€",
     description:
       "Bouquet profumato artigianale ispirato alla forma di un vero mazzo di fiori, con sviluppo verticale e composizione floreale elegante.",
+    detail:
+      "La forma slanciata richiama un bouquet appena composto e crea un punto focale elegante per un regalo, una cerimonia o un angolo speciale della casa.",
+    benefits: ["Effetto bouquet realistico", "Composizione verticale", "Quattro palette disponibili"],
     variants: "Colori: neutro, salvia, azzurro, rosa.",
     note: "Unica dimensione.",
     images: ["/assets/catalog/essenza.jpeg"],
@@ -58,6 +70,9 @@ const products: Product[] = [
     category: "Bomboniere",
     price: "18€ cad.",
     description: "Bouquet in cera profumata pensato per bomboniere ed eventi.",
+    detail:
+      "Un piccolo bouquet pensato per lasciare agli ospiti un ricordo profumato e decorativo, coordinabile ai colori e allo stile dell'evento.",
+    benefits: ["Formato bomboniera", "Ricordo profumato", "Palette coordinabile"],
     variants: "Colori: neutro, salvia, azzurro, rosa.",
     note: "Ordine minimo: 10 pezzi.",
     images: ["/assets/catalog/essenza-petit.jpeg"],
@@ -69,6 +84,9 @@ const products: Product[] = [
     category: "Bomboniere",
     price: "13€ cad.",
     description: "Candela artigianale in cera di soia decorata con elementi botanici.",
+    detail:
+      "Una candela essenziale e delicata, impreziosita da elementi botanici che trasformano ogni bomboniera in un piccolo oggetto da esporre.",
+    benefits: ["Cera di soia", "Dettagli botanici", "Palette personalizzabile"],
     variants: "Colori: neutro, salvia, azzurro, rosa.",
     note: "Ordine minimo: 10 pezzi.",
     images: ["/assets/catalog/candela-botanica.jpeg"],
@@ -80,6 +98,9 @@ const products: Product[] = [
     category: "Bomboniere",
     price: "18€ cad.",
     description: "Candela profumata con rosa in cera e campana in vetro personalizzabile per eventi e cerimonie.",
+    detail:
+      "La rosa in cera diventa il centro di una bomboniera romantica e luminosa, protetta dalla campana in vetro e coordinabile alla cerimonia.",
+    benefits: ["Rosa in cera profumata", "Campana in vetro", "Dettagli personalizzabili"],
     variants: "Personalizzabile per palette, evento e dettagli coordinati.",
     note: "Ordine minimo: 10 pezzi.",
     images: ["/assets/catalog/candela-rose.jpeg"],
@@ -92,6 +113,9 @@ const products: Product[] = [
     price: "2,50€ cad.",
     description:
       "Segnaposto personalizzato con fiore in cera profumata applicato su cartoncino con grafica e dedica coordinate all'evento.",
+    detail:
+      "Accoglie ogni invitato con un nome, una dedica e un fiore profumato. La grafica viene coordinata all'evento per rendere la tavola personale fin dal primo sguardo.",
+    benefits: ["Nome e dedica personalizzati", "Fiore profumato in cera", "Grafica coordinata"],
     variants: "Grafica e colori personalizzabili.",
     note: "Ordine minimo: 20 pezzi.",
     images: ["/assets/catalog/segnaposto-floreale.jpeg"],
@@ -104,6 +128,9 @@ const products: Product[] = [
     price: "5€ cad.",
     description:
       "Tart profumate decorate con elementi botanici e floreali, pensate come piccolo pensiero, mini bomboniera o dettaglio profumato.",
+    detail:
+      "Un gesto piccolo ma curato, da donare singolarmente o inserire in una composizione. Forme e decorazioni possono seguire il tema scelto.",
+    benefits: ["Piccolo formato profumato", "Decorazioni botaniche", "Forme personalizzabili"],
     variants: "Forme, colori e decorazioni personalizzabili.",
     note: "Ordine minimo: 6 pezzi.",
     images: ["/assets/catalog/tart-botaniche.jpeg"],
@@ -115,6 +142,9 @@ const products: Product[] = [
     category: "Regali",
     price: "25€",
     description: "Candela artigianale in cera di soia sotto campana in vetro, decorata con dettagli botanici.",
+    detail:
+      "Una candela da regalare e lasciare in vista: la campana in vetro custodisce la luce e i dettagli botanici, creando un'atmosfera intima e raffinata.",
+    benefits: ["Cera di soia", "Campana in vetro", "Dettagli botanici"],
     variants: "Personalizzabile nei dettagli decorativi.",
     note: "Idea regalo profumata.",
     images: ["/assets/catalog/aura.jpeg"],
@@ -126,6 +156,9 @@ const products: Product[] = [
     category: "Personalizzati",
     price: "Piccola 15€ • Media 30€",
     description: "Iniziale decorativa personalizzata con fiori in cera profumata e dettagli floreali coordinati.",
+    detail:
+      "Un'iniziale costruita su misura che racconta una persona o un'occasione attraverso fiori profumati, colori scelti e una forma da conservare nel tempo.",
+    benefits: ["Iniziale su misura", "Fiori profumati in cera", "Due dimensioni disponibili"],
     variants: "Lettera e palette personalizzabili.",
     note: "Adatta come regalo, decorazione o dettaglio evento.",
     images: ["/assets/catalog/lettera-floreale.jpeg"],
@@ -144,6 +177,25 @@ function createWhatsAppLink(product?: Product) {
 export default function App() {
   const [activeCategory, setActiveCategory] = useState<Category>("Tutti");
   const [query, setQuery] = useState("");
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+
+  useEffect(() => {
+    if (!selectedProduct) return;
+
+    const previousOverflow = document.body.style.overflow;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setSelectedProduct(null);
+    };
+
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", closeOnEscape);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [selectedProduct]);
 
   const filteredProducts = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -155,6 +207,8 @@ export default function App() {
         product.category,
         product.price,
         product.description,
+        product.detail,
+        ...product.benefits,
         product.variants,
         product.note,
       ]
@@ -165,6 +219,11 @@ export default function App() {
       return matchesCategory && matchesQuery;
     });
   }, [activeCategory, query]);
+
+  function openProduct(product: Product) {
+    setSelectedImageIndex(0);
+    setSelectedProduct(product);
+  }
 
   return (
     <>
@@ -282,34 +341,47 @@ export default function App() {
                     <img src={image} alt={product.title} key={image} />
                   ))}
                   <span className="product-category">{product.category}</span>
+                  <span className="product-availability">
+                    <Clock size={14} aria-hidden="true" />
+                    Su ordinazione
+                  </span>
                 </div>
 
                 <div className="product-info">
                   <div className="product-title-row">
                     <div>
                       <h3>{product.title}</h3>
-                      <strong>{product.price}</strong>
+                      <p className="product-price">
+                        <span>Prezzo</span>
+                        <strong>{product.price}</strong>
+                      </p>
                     </div>
                     <span className="swatch" style={{ backgroundColor: product.accent }} aria-hidden="true" />
                   </div>
 
                   <p className="product-description">{product.description}</p>
 
-                  <dl className="product-details">
-                    <div>
-                      <dt>Varianti</dt>
-                      <dd>{product.variants}</dd>
-                    </div>
-                    <div>
-                      <dt>Note</dt>
-                      <dd>{product.note}</dd>
-                    </div>
-                  </dl>
+                  <ul className="product-benefits" aria-label={`Benefici di ${product.title}`}>
+                    {product.benefits.slice(0, 2).map((benefit) => (
+                      <li key={benefit}>
+                        <Check size={15} aria-hidden="true" />
+                        {benefit}
+                      </li>
+                    ))}
+                  </ul>
 
-                  <a className="order-link" href={createWhatsAppLink(product)} target="_blank" rel="noreferrer">
-                    <MessageCircle size={19} aria-hidden="true" />
-                    Ordina ora
-                  </a>
+                  <p className="product-card-note">{product.note}</p>
+
+                  <div className="product-actions">
+                    <button className="detail-button" type="button" onClick={() => openProduct(product)}>
+                      <Eye size={18} aria-hidden="true" />
+                      Scopri
+                    </button>
+                    <a className="order-link" href={createWhatsAppLink(product)} target="_blank" rel="noreferrer">
+                      <MessageCircle size={18} aria-hidden="true" />
+                      Ordina ora
+                    </a>
+                  </div>
                 </div>
               </article>
             ))}
@@ -377,6 +449,105 @@ export default function App() {
           Richiedi informazioni
         </a>
       </footer>
+
+      {selectedProduct && (
+        <div className="product-modal-backdrop" onClick={() => setSelectedProduct(null)}>
+          <section
+            className="product-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={`product-modal-${selectedProduct.id}`}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              className="modal-close"
+              type="button"
+              autoFocus
+              onClick={() => setSelectedProduct(null)}
+              aria-label="Chiudi scheda prodotto"
+              title="Chiudi"
+            >
+              <X size={22} aria-hidden="true" />
+            </button>
+
+            <div className="product-modal-gallery">
+              <img
+                className="modal-main-image"
+                src={selectedProduct.images[selectedImageIndex]}
+                alt={selectedProduct.title}
+              />
+              {selectedProduct.images.length > 1 && (
+                <div className="modal-thumbnails" aria-label={`Foto di ${selectedProduct.title}`}>
+                  {selectedProduct.images.map((image, index) => (
+                    <button
+                      className={selectedImageIndex === index ? "active" : ""}
+                      type="button"
+                      onClick={() => setSelectedImageIndex(index)}
+                      aria-label={`Mostra foto ${index + 1} di ${selectedProduct.title}`}
+                      key={image}
+                    >
+                      <img src={image} alt="" />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="product-modal-content">
+              <p className="modal-kicker">{selectedProduct.category} • Creazione artigianale profumata</p>
+              <h2 id={`product-modal-${selectedProduct.id}`}>{selectedProduct.title}</h2>
+              <p className="modal-intro">{selectedProduct.description}</p>
+
+              <ul className="modal-benefits" aria-label={`Punti di forza di ${selectedProduct.title}`}>
+                {selectedProduct.benefits.map((benefit) => (
+                  <li key={benefit}>
+                    <Check size={17} aria-hidden="true" />
+                    {benefit}
+                  </li>
+                ))}
+              </ul>
+
+              <div className="modal-purchase-info">
+                <div>
+                  <span>Prezzo</span>
+                  <strong>{selectedProduct.price}</strong>
+                </div>
+                <div>
+                  <span>Disponibilità</span>
+                  <strong>
+                    <Clock size={17} aria-hidden="true" />
+                    Disponibile su ordinazione
+                  </strong>
+                </div>
+              </div>
+
+              <a
+                className="modal-order-link"
+                href={createWhatsAppLink(selectedProduct)}
+                target="_blank"
+                rel="noreferrer"
+              >
+                <MessageCircle size={20} aria-hidden="true" />
+                Ordina ora su WhatsApp
+              </a>
+
+              <p className="modal-detail">{selectedProduct.detail}</p>
+
+              <dl className="modal-specs">
+                <div>
+                  <dt>Varianti e personalizzazioni</dt>
+                  <dd>{selectedProduct.variants}</dd>
+                </div>
+                <div>
+                  <dt>Dettagli d'ordine</dt>
+                  <dd>{selectedProduct.note}</dd>
+                </div>
+              </dl>
+
+            </div>
+          </section>
+        </div>
+      )}
     </>
   );
 }
