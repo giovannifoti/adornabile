@@ -20,6 +20,15 @@ const categories = ["Tutti", "Bouquet", "Personalizzati"] as const;
 
 type Category = (typeof categories)[number];
 
+type PaletteOption = {
+  id: string;
+  label: string;
+  title: string;
+  description: string;
+  image: string;
+  accent: string;
+};
+
 type Product = {
   id: string;
   title: string;
@@ -35,6 +44,41 @@ type Product = {
   imageFit?: "cover" | "contain";
   accent: string;
 };
+
+const paletteOptions: PaletteOption[] = [
+  {
+    id: "neutra",
+    label: "Neutra",
+    title: "Palette neutra",
+    description: "Avorio, cipria e botaniche naturali per una composizione luminosa e delicata.",
+    image: "/assets/catalog/palette-neutra.jpeg",
+    accent: "#d8c5ad",
+  },
+  {
+    id: "rosa",
+    label: "Rosa",
+    title: "Palette rosa",
+    description: "Toni romantici e morbidi, perfetti per cerimonie, regali e dettagli coordinati.",
+    image: "/assets/catalog/palette-rosa.jpeg",
+    accent: "#e7aab0",
+  },
+  {
+    id: "salvia",
+    label: "Verde salvia",
+    title: "Palette verde salvia",
+    description: "Una sfumatura botanica elegante, con fiori chiari e accenti salvia.",
+    image: "/assets/catalog/palette-verde-salvia.jpeg",
+    accent: "#9baa91",
+  },
+  {
+    id: "azzurra",
+    label: "Azzurra",
+    title: "Palette azzurra",
+    description: "Azzurro polvere e fiori chiari per una resa fresca, fine e personalizzabile.",
+    image: "/assets/catalog/palette-azzurra.jpeg",
+    accent: "#8eb9c5",
+  },
+];
 
 const products: Product[] = [
   {
@@ -85,7 +129,6 @@ const products: Product[] = [
     variants: "Disponibile nelle palette della collezione.",
     note: "Richiedi un preventivo personalizzato se lo desideri come bouquet bomboniera.",
     images: ["/assets/catalog/essenza-petit.jpeg"],
-    video: "/assets/catalog/essenza-petit.mp4",
     accent: "#9baa91",
   },
   {
@@ -118,6 +161,7 @@ export default function App() {
   const [query, setQuery] = useState("");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [selectedMediaIndex, setSelectedMediaIndex] = useState(0);
+  const [selectedPaletteId, setSelectedPaletteId] = useState(paletteOptions[0].id);
 
   useEffect(() => {
     if (!selectedProduct) return;
@@ -159,6 +203,8 @@ export default function App() {
     });
   }, [activeCategory, query]);
 
+  const selectedPalette = paletteOptions.find((palette) => palette.id === selectedPaletteId) ?? paletteOptions[0];
+
   function openProduct(product: Product) {
     setSelectedMediaIndex(0);
     setSelectedProduct(product);
@@ -184,6 +230,7 @@ export default function App() {
 
         <nav className="main-nav" aria-label="Navigazione principale">
           <a href="#catalogo">Catalogo</a>
+          <a href="#palette">Palette</a>
           <a href="#atelier">Personalizzazioni</a>
           <a href="#ordini">Ordini</a>
         </nav>
@@ -330,6 +377,49 @@ export default function App() {
               <p>Nessun prodotto trovato con questi filtri.</p>
             </div>
           )}
+        </section>
+
+        <section className="palette-section" id="palette" aria-labelledby="palette-heading">
+          <div className="palette-shell">
+            <div className="palette-heading">
+              <div>
+                <p className="eyebrow">Palette</p>
+                <h2 id="palette-heading">Quattro palette per immaginare subito la tua composizione.</h2>
+              </div>
+              <p>
+                Ogni linea può essere coordinata nei colori della collezione, mantenendo lo stesso stile
+                floreale artigianale.
+              </p>
+            </div>
+
+            <div className="palette-card">
+              <div className="palette-preview">
+                <img src={selectedPalette.image} alt={`${selectedPalette.title} Adornabile`} />
+                <span className="palette-preview-label">{selectedPalette.label}</span>
+              </div>
+
+              <div className="palette-panel">
+                <Palette size={28} aria-hidden="true" />
+                <h3>{selectedPalette.title}</h3>
+                <p>{selectedPalette.description}</p>
+
+                <div className="palette-buttons" aria-label="Palette disponibili">
+                  {paletteOptions.map((palette) => (
+                    <button
+                      className={selectedPalette.id === palette.id ? "active" : ""}
+                      type="button"
+                      aria-pressed={selectedPalette.id === palette.id}
+                      onClick={() => setSelectedPaletteId(palette.id)}
+                      key={palette.id}
+                    >
+                      <span className="palette-dot" style={{ backgroundColor: palette.accent }} aria-hidden="true" />
+                      <span>{palette.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
         </section>
 
         <section className="atelier-section" id="atelier">
