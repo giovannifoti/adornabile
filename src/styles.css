@@ -495,13 +495,14 @@ img {
   align-items: center;
   gap: 6px;
   min-height: 30px;
-  padding: 6px 11px;
+  padding: 6px 10px;
   border: 1px solid rgba(45, 39, 41, 0.08);
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.9);
   color: #52694d;
-  font-size: 0.7rem;
+  font-size: 0.66rem;
   font-weight: 900;
+  white-space: nowrap;
   text-transform: uppercase;
 }
 
@@ -852,6 +853,48 @@ img {
 .modal-purchase-info > div:last-child strong {
   color: #52694d;
   font-size: 0.94rem;
+}
+
+.modal-addons {
+  display: grid;
+  gap: 12px;
+  margin: -8px 0 24px;
+  padding: 16px;
+  border: 1px solid rgba(125, 48, 70, 0.14);
+  border-radius: 8px;
+  background: var(--rose-40);
+}
+
+.modal-addons > span {
+  color: var(--rose-720);
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.modal-addons ul {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.modal-addons li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: #564b4e;
+  font-size: 0.86rem;
+  font-weight: 800;
+  line-height: 1.34;
+}
+
+.modal-addons svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+  color: var(--sage);
 }
 
 .modal-detail {
@@ -1390,12 +1433,16 @@ img {
     order: 4;
   }
 
-  .modal-order-link {
+  .modal-addons {
     order: 5;
   }
 
-  .modal-benefits {
+  .modal-order-link {
     order: 6;
+  }
+
+  .modal-benefits {
+    order: 7;
     grid-template-columns: 1fr;
     gap: 9px;
   }
@@ -1412,11 +1459,11 @@ img {
   }
 
   .modal-detail {
-    order: 7;
+    order: 8;
   }
 
   .modal-specs {
-    order: 8;
+    order: 9;
   }
 
   .modal-purchase-info > div,
@@ -1433,6 +1480,15 @@ img {
 
   .modal-detail {
     font-size: 1.14rem;
+  }
+
+  .modal-addons {
+    margin-top: -4px;
+    padding: 14px;
+  }
+
+  .modal-addons ul {
+    grid-template-columns: 1fr;
   }
 
   .modal-thumbnails button {

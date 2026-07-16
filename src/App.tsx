@@ -42,6 +42,7 @@ type Product = {
   images: string[];
   video?: string;
   imageFit?: "cover" | "contain";
+  imagePosition?: string;
   accent: string;
 };
 
@@ -80,6 +81,13 @@ const paletteOptions: PaletteOption[] = [
   },
 ];
 
+const productOrderOptions = [
+  "Spedizione gratuita da 80€",
+  "Aggiungi confezione premium (scatola rigida con nastro)",
+  "Aggiungi dedica personalizzata",
+  "Aggiungi topper a tema",
+];
+
 const products: Product[] = [
   {
     id: "essenza-pura",
@@ -113,7 +121,7 @@ const products: Product[] = [
     benefits: ["Effetto bouquet realistico", "Composizione verticale", "Quattro palette disponibili"],
     variants: "Colori: neutro, salvia, azzurro, rosa.",
     note: "Unica dimensione.",
-    images: ["/assets/catalog/essenza-palette-salvia.jpeg", "/assets/catalog/essenza.jpeg"],
+    images: ["/assets/catalog/palette-rosa.jpeg", "/assets/catalog/essenza-palette-salvia.jpeg", "/assets/catalog/essenza.jpeg"],
     imageFit: "contain",
     accent: "#e58ba2",
   },
@@ -129,19 +137,20 @@ const products: Product[] = [
     variants: "Disponibile nelle palette della collezione.",
     note: "Richiedi un preventivo personalizzato se lo desideri come bouquet bomboniera.",
     images: ["/assets/catalog/essenza-petit.jpeg"],
+    imagePosition: "center 62%",
     accent: "#9baa91",
   },
   {
     id: "lettera-floreale",
     title: "Lettera Floreale",
     category: "Personalizzati",
-    price: "Piccola 15€ • Media 30€ • Grande 40€",
+    price: "Piccola 15€ • Grande 40€",
     description: "Iniziale decorativa personalizzata con fiori in cera profumata e dettagli floreali coordinati.",
     detail:
       "Un'iniziale costruita su misura che racconta una persona o un'occasione attraverso fiori profumati, colori scelti e una forma da conservare nel tempo.",
-    benefits: ["Iniziale su misura", "Fiori profumati in cera", "Tre dimensioni disponibili"],
-    variants: "Lettera, formato e palette personalizzabili.",
-    note: "Disponibile nei formati piccolo, medio e grande.",
+    benefits: ["Iniziale su misura", "Fiori profumati in cera", "Due dimensioni disponibili"],
+    variants: "Lettera, formato piccolo o grande e palette personalizzabili.",
+    note: "Disponibile nei formati piccolo e grande.",
     images: ["/assets/catalog/lettera-floreale.jpeg"],
     video: "/assets/catalog/lettera-floreale-grande.mp4",
     accent: "#318498",
@@ -248,10 +257,7 @@ export default function App() {
           <div className="hero-content">
             <p className="eyebrow">Catalogo online</p>
             <h1>Adornabile Handmade</h1>
-            <p>
-              Bouquet profumati, candele botaniche e dettagli personalizzati in cera profumata per
-              occasioni speciali e piccoli rituali di bellezza quotidiana.
-            </p>
+            <p>bouquet in cera profumata per impreziosire la tua casa o il tuo evento</p>
             <div className="hero-actions">
               <a className="primary-link" href="#catalogo">
                 <Sparkles size={19} aria-hidden="true" />
@@ -323,11 +329,11 @@ export default function App() {
             {filteredProducts.map((product) => (
               <article className="product-card" key={product.id}>
                 <div className="product-media">
-                  <img src={product.images[0]} alt={product.title} />
+                  <img src={product.images[0]} alt={product.title} style={{ objectPosition: product.imagePosition }} />
                   <span className="product-category">{product.category}</span>
                   <span className="product-availability">
                     <Clock size={14} aria-hidden="true" />
-                    Su ordinazione
+                    Pochi pezzi disponibili
                   </span>
                 </div>
 
@@ -507,6 +513,7 @@ export default function App() {
                   className={selectedProduct.imageFit === "contain" ? "modal-main-image contain" : "modal-main-image"}
                   src={selectedProduct.images[selectedMediaIndex]}
                   alt={selectedProduct.title}
+                  style={{ objectPosition: selectedProduct.imagePosition }}
                 />
               )}
               {selectedProduct.images.length + (selectedProduct.video ? 1 : 0) > 1 && (
@@ -559,9 +566,21 @@ export default function App() {
                   <span>Disponibilità</span>
                   <strong>
                     <Clock size={17} aria-hidden="true" />
-                    Disponibile su ordinazione
+                    Pochi pezzi disponibili
                   </strong>
                 </div>
+              </div>
+
+              <div className="modal-addons" aria-label="Servizi aggiuntivi disponibili">
+                <span>Extra disponibili</span>
+                <ul>
+                  {productOrderOptions.map((option) => (
+                    <li key={option}>
+                      <Check size={16} aria-hidden="true" />
+                      {option}
+                    </li>
+                  ))}
+                </ul>
               </div>
 
               <a
