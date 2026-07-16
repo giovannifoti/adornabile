@@ -137,7 +137,7 @@ const products: Product[] = [
     variants: "Disponibile nelle palette della collezione.",
     note: "Richiedi un preventivo personalizzato se lo desideri come bouquet bomboniera.",
     images: ["/assets/catalog/essenza-petit.jpeg"],
-    imagePosition: "center 34%",
+    imagePosition: "center 88%",
     accent: "#9baa91",
   },
   {
