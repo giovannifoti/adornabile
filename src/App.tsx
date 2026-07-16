@@ -257,7 +257,7 @@ export default function App() {
           <div className="hero-content">
             <p className="eyebrow">Catalogo online</p>
             <h1>Adornabile Handmade</h1>
-            <p>bouquet in cera profumata per impreziosire la tua casa o il tuo evento</p>
+            <p>Bouquet in cera profumata per impreziosire la tua casa o il tuo evento</p>
             <div className="hero-actions">
               <a className="primary-link" href="#catalogo">
                 <Sparkles size={19} aria-hidden="true" />
