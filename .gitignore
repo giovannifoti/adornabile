@@ -3,4 +3,6 @@ dist/
 .npm-cache/
 .DS_Store
 .env
+*.env
 data/orders.json
+data/stripe-events.json

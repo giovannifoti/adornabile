@@ -8,16 +8,19 @@ import Stripe from "stripe";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const distDir = path.join(__dirname, "dist");
-const dataDir = path.join(__dirname, "data");
+const dataDir = process.env.ORDERS_DATA_DIR ? path.resolve(process.env.ORDERS_DATA_DIR) : path.join(__dirname, "data");
 const ordersFile = path.join(dataDir, "orders.json");
+const stripeEventsFile = path.join(dataDir, "stripe-events.json");
 const freeShippingThresholdCents = 8000;
 
-await loadEnvFile();
+await loadEnvFiles([".env", "prova.env"]);
 
 const port = Number(process.env.PORT ?? 4173);
+const host = process.env.HOST ?? "0.0.0.0";
 const adminUsername = process.env.ADMIN_USERNAME ?? "adornabile";
 const adminPassword = process.env.ADMIN_PASSWORD ?? "valeria8";
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+const stripeWebhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 const stripe = stripeSecretKey ? new Stripe(stripeSecretKey) : null;
 
 const catalog = {
@@ -80,35 +83,86 @@ const server = createServer(async (request, response) => {
   }
 });
 
-server.listen(port, () => {
+server.listen(port, host, () => {
   console.log(`Adornabile ecommerce pronto su http://localhost:${port}`);
-  console.log(stripe ? "Stripe Checkout attivo." : "Stripe non configurato: aggiungi STRIPE_SECRET_KEY in .env.");
+  console.log(
+    stripe ? "Stripe Checkout attivo." : "Stripe non configurato: aggiungi STRIPE_SECRET_KEY in .env o prova.env.",
+  );
+  console.log(
+    stripeWebhookSecret ? "Webhook Stripe attivo." : "Webhook Stripe non configurato: aggiungi STRIPE_WEBHOOK_SECRET.",
+  );
 });
 
-async function loadEnvFile() {
-  try {
-    const envFile = await readFile(path.join(__dirname, ".env"), "utf8");
+async function loadEnvFiles(fileNames) {
+  for (const fileName of fileNames) {
+    try {
+      const envFile = await readFile(path.join(__dirname, fileName), "utf8");
 
-    for (const line of envFile.split(/\r?\n/)) {
-      const trimmed = line.trim();
-      if (!trimmed || trimmed.startsWith("#")) continue;
+      for (const line of envFile.split(/\r?\n/)) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith("#")) continue;
 
-      const separatorIndex = trimmed.indexOf("=");
-      if (separatorIndex === -1) continue;
+        const separatorIndex = trimmed.indexOf("=");
+        if (separatorIndex === -1) continue;
 
-      const key = trimmed.slice(0, separatorIndex).trim();
-      const value = trimmed.slice(separatorIndex + 1).trim().replace(/^['"]|['"]$/g, "");
+        const key = trimmed.slice(0, separatorIndex).trim();
+        const value = trimmed.slice(separatorIndex + 1).trim().replace(/^['"]|['"]$/g, "");
 
-      if (key && process.env[key] === undefined) {
-        process.env[key] = value;
+        if (key && process.env[key] === undefined) {
+          process.env[key] = value;
+        }
       }
+    } catch {
+      // The server can run without local env files; Stripe simply stays disabled.
     }
-  } catch {
-    // The server can run without a .env file; Stripe simply stays disabled.
   }
 }
 
 async function handleApi(request, response, url) {
+  if (request.method === "GET" && url.pathname === "/api/health") {
+    sendJson(response, 200, {
+      ok: true,
+      stripeConfigured: Boolean(stripe),
+      webhookConfigured: Boolean(stripeWebhookSecret),
+      dataDir,
+    });
+    return;
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/stripe/webhook") {
+    if (!stripe || !stripeWebhookSecret) {
+      sendJson(response, 400, { error: "Webhook Stripe non configurato." });
+      return;
+    }
+
+    const signature = request.headers["stripe-signature"];
+    if (!signature) {
+      sendJson(response, 400, { error: "Firma Stripe mancante." });
+      return;
+    }
+
+    let event;
+    const rawBody = await readRequestBody(request);
+
+    try {
+      event = stripe.webhooks.constructEvent(rawBody, signature, stripeWebhookSecret);
+    } catch {
+      sendJson(response, 400, { error: "Firma Stripe non valida." });
+      return;
+    }
+
+    const alreadyProcessed = await hasProcessedStripeEvent(event.id);
+    if (alreadyProcessed) {
+      sendJson(response, 200, { received: true, duplicate: true });
+      return;
+    }
+
+    await handleStripeEvent(event);
+    await recordStripeEvent(event);
+    sendJson(response, 200, { received: true });
+    return;
+  }
+
   if (request.method === "POST" && url.pathname === "/api/checkout") {
     const payload = await readRequestJson(request);
     const items = validateCartItems(payload.items);
@@ -244,6 +298,18 @@ function getOrigin(request) {
 }
 
 function readRequestJson(request) {
+  return readRequestBody(request).then((body) => {
+    try {
+      return body ? JSON.parse(body) : {};
+    } catch {
+      const error = new Error("JSON non valido.");
+      error.statusCode = 400;
+      throw error;
+    }
+  });
+}
+
+function readRequestBody(request) {
   return new Promise((resolve, reject) => {
     let body = "";
 
@@ -257,15 +323,7 @@ function readRequestJson(request) {
       }
     });
 
-    request.on("end", () => {
-      try {
-        resolve(body ? JSON.parse(body) : {});
-      } catch {
-        const error = new Error("JSON non valido.");
-        error.statusCode = 400;
-        reject(error);
-      }
-    });
+    request.on("end", () => resolve(body));
 
     request.on("error", reject);
   });
@@ -370,6 +428,98 @@ async function upsertOrder(order) {
   const temporaryFile = `${ordersFile}.tmp`;
   await writeFile(temporaryFile, `${JSON.stringify(nextOrders, null, 2)}\n`, "utf8");
   await rename(temporaryFile, ordersFile);
+}
+
+async function updateOrderStatus(orderId, status, updates = {}) {
+  const orders = await readOrders();
+  const nextOrders = orders.map((order) =>
+    order.id === orderId
+      ? {
+          ...order,
+          ...updates,
+          status,
+          updatedAt: new Date().toISOString(),
+        }
+      : order,
+  );
+  const temporaryFile = `${ordersFile}.tmp`;
+  await writeFile(temporaryFile, `${JSON.stringify(nextOrders, null, 2)}\n`, "utf8");
+  await rename(temporaryFile, ordersFile);
+}
+
+async function handleStripeEvent(event) {
+  if (
+    event.type !== "checkout.session.completed" &&
+    event.type !== "checkout.session.async_payment_succeeded" &&
+    event.type !== "checkout.session.async_payment_failed" &&
+    event.type !== "checkout.session.expired"
+  ) {
+    return;
+  }
+
+  const session = event.data.object;
+  const orderId = session.client_reference_id ?? session.metadata?.order_id;
+  if (!orderId) return;
+
+  if (event.type === "checkout.session.completed" || event.type === "checkout.session.async_payment_succeeded") {
+    await updateOrderStatus(orderId, "Pagato", {
+      paidAt: new Date().toISOString(),
+      paymentProvider: "Stripe Checkout",
+      stripeSessionId: session.id,
+      totalCents: session.amount_total ?? undefined,
+    });
+    return;
+  }
+
+  if (event.type === "checkout.session.async_payment_failed") {
+    await updateOrderStatus(orderId, "Pagamento non riuscito", {
+      paymentProvider: "Stripe Checkout",
+      stripeSessionId: session.id,
+    });
+    return;
+  }
+
+  await updateOrderStatus(orderId, "Pagamento scaduto", {
+    paymentProvider: "Stripe Checkout",
+    stripeSessionId: session.id,
+  });
+}
+
+async function readStripeEvents() {
+  await mkdir(dataDir, { recursive: true });
+
+  if (!existsSync(stripeEventsFile)) {
+    await writeFile(stripeEventsFile, "[]\n", "utf8");
+  }
+
+  const rawEvents = await readFile(stripeEventsFile, "utf8");
+
+  try {
+    const parsedEvents = JSON.parse(rawEvents);
+    return Array.isArray(parsedEvents) ? parsedEvents : [];
+  } catch {
+    return [];
+  }
+}
+
+async function hasProcessedStripeEvent(eventId) {
+  const events = await readStripeEvents();
+  return events.some((event) => event.id === eventId);
+}
+
+async function recordStripeEvent(event) {
+  const events = await readStripeEvents();
+  const nextEvents = [
+    {
+      id: event.id,
+      type: event.type,
+      createdAt: new Date().toISOString(),
+    },
+    ...events.filter((savedEvent) => savedEvent.id !== event.id),
+  ].slice(0, 500);
+  const temporaryFile = `${stripeEventsFile}.tmp`;
+  await writeFile(temporaryFile, `${JSON.stringify(nextEvents, null, 2)}\n`, "utf8");
+  await rename(temporaryFile, stripeEventsFile);
 }
 
 function sendJson(response, statusCode, body) {

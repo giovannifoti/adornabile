@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: adornabile-ecommerce
+    runtime: node
+    plan: 0.5c-512mb
+    region: frankfurt
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeployTrigger: commit
+    disk:
+      name: adornabile-orders
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: NODE_VERSION
+        value: 24.16.0
+      - key: ORDERS_DATA_DIR
+        value: /var/data/adornabile
+      - key: PUBLIC_SITE_URL
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: ADMIN_USERNAME
+        value: adornabile
+      - key: ADMIN_PASSWORD
+        sync: false

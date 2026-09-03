@@ -1245,7 +1245,6 @@ export default function App() {
     <>
       <div className="announcement-bar">
         <span>Spedizione gratuita da 80€</span>
-        <a href="#admin">Area admin</a>
       </div>
 
       <header className="site-header">
