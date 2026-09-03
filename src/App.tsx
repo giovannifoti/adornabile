@@ -1,24 +1,41 @@
 import {
   ArrowRight,
   Check,
+  ClipboardList,
   Clock,
+  CreditCard,
   Eye,
   Gift,
   Leaf,
+  Lock,
+  LogOut,
   MessageCircle,
+  Minus,
   PackageCheck,
   Palette,
   Play,
+  Plus,
   Search,
+  ShieldCheck,
+  ShoppingBag,
+  ShoppingCart,
   Sparkles,
+  Trash2,
+  Truck,
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import type { FormEvent } from "react";
 
 const whatsappNumber = "393711883722";
+const freeShippingThresholdCents = 8000;
+const cartStorageKey = "adornabile-cart";
+const localOrdersStorageKey = "adornabile-orders";
+const lastOrderStorageKey = "adornabile-last-order";
 const categories = ["Tutti", "Bouquet", "Personalizzati"] as const;
 
 type Category = (typeof categories)[number];
+type AppView = "shop" | "checkout" | "payment" | "success" | "admin";
 
 type PaletteOption = {
   id: string;
@@ -27,6 +44,12 @@ type PaletteOption = {
   description: string;
   image: string;
   accent: string;
+};
+
+type ProductOption = {
+  id: string;
+  label: string;
+  priceCents: number;
 };
 
 type Product = {
@@ -44,6 +67,79 @@ type Product = {
   imageFit?: "cover" | "contain";
   imagePosition?: string;
   accent: string;
+  options: ProductOption[];
+};
+
+type CartItem = {
+  productId: string;
+  optionId: string;
+  quantity: number;
+};
+
+type CartLine = CartItem & {
+  product: Product;
+  option: ProductOption;
+  lineTotalCents: number;
+};
+
+type CheckoutForm = {
+  fullName: string;
+  email: string;
+  phone: string;
+  address: string;
+  city: string;
+  province: string;
+  postalCode: string;
+  country: string;
+  deliveryNotes: string;
+  dedication: string;
+  topperTheme: string;
+  premiumPackaging: boolean;
+};
+
+type OrderItem = {
+  productId: string;
+  productTitle: string;
+  optionId: string;
+  optionLabel: string;
+  unitPriceCents: number;
+  quantity: number;
+  lineTotalCents: number;
+};
+
+type OrderRecord = {
+  id: string;
+  createdAt: string;
+  items: OrderItem[];
+  customer: CheckoutForm;
+  subtotalCents: number;
+  totalCents: number;
+  status: string;
+  paymentProvider: string;
+  paymentUrl?: string;
+  shippingNote: string;
+};
+
+type CheckoutResponse = {
+  order: OrderRecord;
+  checkoutUrl: string;
+  provider: string;
+  configured: boolean;
+};
+
+const emptyCheckoutForm: CheckoutForm = {
+  fullName: "",
+  email: "",
+  phone: "",
+  address: "",
+  city: "",
+  province: "",
+  postalCode: "",
+  country: "Italia",
+  deliveryNotes: "",
+  dedication: "",
+  topperTheme: "",
+  premiumPackaging: false,
 };
 
 const paletteOptions: PaletteOption[] = [
@@ -108,6 +204,10 @@ const products: Product[] = [
       "/assets/catalog/essenza-pura-media-azzurra.jpeg",
     ],
     accent: "#9cac8a",
+    options: [
+      { id: "media", label: "Media", priceCents: 4000 },
+      { id: "grande", label: "Grande", priceCents: 7000 },
+    ],
   },
   {
     id: "essenza",
@@ -124,6 +224,7 @@ const products: Product[] = [
     images: ["/assets/catalog/palette-rosa.jpeg", "/assets/catalog/essenza-palette-salvia.jpeg", "/assets/catalog/essenza.jpeg"],
     imageFit: "contain",
     accent: "#e58ba2",
+    options: [{ id: "unica", label: "Unica", priceCents: 4000 }],
   },
   {
     id: "essenza-petit",
@@ -137,8 +238,10 @@ const products: Product[] = [
     variants: "Disponibile nelle palette della collezione.",
     note: "Richiedi un preventivo personalizzato se lo desideri come bouquet bomboniera.",
     images: ["/assets/catalog/essenza-petit.jpeg"],
+    imageFit: "contain",
     imagePosition: "center center",
     accent: "#9baa91",
+    options: [{ id: "unica", label: "Unica", priceCents: 2500 }],
   },
   {
     id: "lettera-floreale",
@@ -154,40 +257,169 @@ const products: Product[] = [
     images: ["/assets/catalog/lettera-floreale.jpeg"],
     video: "/assets/catalog/lettera-floreale-grande.mp4",
     accent: "#318498",
+    options: [
+      { id: "piccola", label: "Piccola", priceCents: 1500 },
+      { id: "grande", label: "Grande", priceCents: 4000 },
+    ],
   },
 ];
 
-function createWhatsAppLink(product?: Product) {
-  const message = product
-    ? `Ciao Adornabile, vorrei ordinare "${product.title}" dal catalogo online. Potete indicarmi disponibilità, colori e tempi di consegna?`
-    : "Ciao Adornabile, vorrei effettuare un ordine dal catalogo online. Potete aiutarmi?";
+function createWhatsAppLink(product?: Product, order?: OrderRecord) {
+  const message = order
+    ? `Ciao Adornabile, ho creato l'ordine ${order.id} dal sito e vorrei ricevere conferma.`
+    : product
+      ? `Ciao Adornabile, vorrei ordinare "${product.title}" dal catalogo online. Potete indicarmi disponibilità, colori e tempi di consegna?`
+      : "Ciao Adornabile, vorrei effettuare un ordine dal catalogo online. Potete aiutarmi?";
 
   return `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
 }
 
+function formatCurrency(cents: number) {
+  return new Intl.NumberFormat("it-IT", {
+    style: "currency",
+    currency: "EUR",
+    maximumFractionDigits: 0,
+  }).format(cents);
+}
+
+function formatDate(value: string) {
+  return new Intl.DateTimeFormat("it-IT", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(value));
+}
+
+function resolveViewFromHash(hash: string): AppView {
+  const cleanHash = hash.replace("#", "").split("?")[0];
+
+  if (cleanHash === "checkout") return "checkout";
+  if (cleanHash === "pagamento") return "payment";
+  if (cleanHash === "ordine-completato") return "success";
+  if (cleanHash === "admin") return "admin";
+
+  return "shop";
+}
+
+function readJsonStorage<T>(key: string, fallback: T): T {
+  try {
+    const rawValue = window.localStorage.getItem(key);
+    return rawValue ? (JSON.parse(rawValue) as T) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function writeJsonStorage<T>(key: string, value: T) {
+  window.localStorage.setItem(key, JSON.stringify(value));
+}
+
+function findProduct(productId: string) {
+  return products.find((product) => product.id === productId);
+}
+
+function findOption(product: Product, optionId: string) {
+  return product.options.find((option) => option.id === optionId) ?? product.options[0];
+}
+
+function buildCartLines(cartItems: CartItem[]): CartLine[] {
+  return cartItems.flatMap((item) => {
+    const product = findProduct(item.productId);
+    if (!product) return [];
+
+    const option = findOption(product, item.optionId);
+    const quantity = Math.max(1, item.quantity);
+
+    return [
+      {
+        ...item,
+        quantity,
+        product,
+        option,
+        lineTotalCents: option.priceCents * quantity,
+      },
+    ];
+  });
+}
+
+function getShippingNote(subtotalCents: number) {
+  return subtotalCents >= freeShippingThresholdCents
+    ? "Spedizione gratuita applicata"
+    : "Spedizione da confermare dopo l'ordine";
+}
+
+function buildOrderItems(cartItems: CartItem[]): OrderItem[] {
+  return buildCartLines(cartItems).map((line) => ({
+    productId: line.product.id,
+    productTitle: line.product.title,
+    optionId: line.option.id,
+    optionLabel: line.option.label,
+    unitPriceCents: line.option.priceCents,
+    quantity: line.quantity,
+    lineTotalCents: line.lineTotalCents,
+  }));
+}
+
+function createLocalOrder(cartItems: CartItem[], customer: CheckoutForm): OrderRecord {
+  const orderItems = buildOrderItems(cartItems);
+  const subtotalCents = orderItems.reduce((total, item) => total + item.lineTotalCents, 0);
+  const orderId = `AD-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+
+  return {
+    id: orderId,
+    createdAt: new Date().toISOString(),
+    items: orderItems,
+    customer,
+    subtotalCents,
+    totalCents: subtotalCents,
+    status: "Ordine salvato - pagamento da configurare",
+    paymentProvider: "Pagamento locale",
+    shippingNote: getShippingNote(subtotalCents),
+  };
+}
+
+function saveOrderLocally(order: OrderRecord) {
+  const orders = readJsonStorage<OrderRecord[]>(localOrdersStorageKey, []);
+  const nextOrders = [order, ...orders.filter((savedOrder) => savedOrder.id !== order.id)].slice(0, 100);
+  writeJsonStorage(localOrdersStorageKey, nextOrders);
+  writeJsonStorage(lastOrderStorageKey, order);
+}
+
+function findOrderFromHash() {
+  const [, queryString] = window.location.hash.split("?");
+  const orderId = new URLSearchParams(queryString ?? "").get("order");
+  if (!orderId) return null;
+
+  return readJsonStorage<OrderRecord[]>(localOrdersStorageKey, []).find((order) => order.id === orderId) ?? null;
+}
+
 export default function App() {
+  const [view, setView] = useState<AppView>(() => resolveViewFromHash(window.location.hash));
   const [activeCategory, setActiveCategory] = useState<Category>("Tutti");
   const [query, setQuery] = useState("");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [selectedOptionId, setSelectedOptionId] = useState<string>("");
   const [selectedMediaIndex, setSelectedMediaIndex] = useState(0);
   const [selectedPaletteId, setSelectedPaletteId] = useState(paletteOptions[0].id);
+  const [cartItems, setCartItems] = useState<CartItem[]>(() => readJsonStorage<CartItem[]>(cartStorageKey, []));
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [checkoutForm, setCheckoutForm] = useState<CheckoutForm>(emptyCheckoutForm);
+  const [checkoutError, setCheckoutError] = useState("");
+  const [isSubmittingCheckout, setIsSubmittingCheckout] = useState(false);
+  const [currentOrder, setCurrentOrder] = useState<OrderRecord | null>(() =>
+    readJsonStorage<OrderRecord | null>(lastOrderStorageKey, null),
+  );
+  const [adminLogin, setAdminLogin] = useState({ username: "", password: "" });
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
+  const [adminOrders, setAdminOrders] = useState<OrderRecord[]>([]);
+  const [adminError, setAdminError] = useState("");
+  const [adminLoading, setAdminLoading] = useState(false);
 
-  useEffect(() => {
-    if (!selectedProduct) return;
-
-    const previousOverflow = document.body.style.overflow;
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setSelectedProduct(null);
-    };
-
-    document.body.style.overflow = "hidden";
-    window.addEventListener("keydown", closeOnEscape);
-
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      window.removeEventListener("keydown", closeOnEscape);
-    };
-  }, [selectedProduct]);
+  const cartLines = useMemo(() => buildCartLines(cartItems), [cartItems]);
+  const cartSubtotalCents = useMemo(
+    () => cartLines.reduce((total, line) => total + line.lineTotalCents, 0),
+    [cartLines],
+  );
+  const cartCount = useMemo(() => cartLines.reduce((total, line) => total + line.quantity, 0), [cartLines]);
 
   const filteredProducts = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -203,6 +435,7 @@ export default function App() {
         ...product.benefits,
         product.variants,
         product.note,
+        ...product.options.map((option) => option.label),
       ]
         .join(" ")
         .toLowerCase();
@@ -213,43 +446,183 @@ export default function App() {
   }, [activeCategory, query]);
 
   const selectedPalette = paletteOptions.find((palette) => palette.id === selectedPaletteId) ?? paletteOptions[0];
+  const selectedOption = selectedProduct ? findOption(selectedProduct, selectedOptionId) : null;
+  const visibleOrder = currentOrder ?? findOrderFromHash();
+
+  useEffect(() => {
+    const syncView = () => setView(resolveViewFromHash(window.location.hash));
+    window.addEventListener("hashchange", syncView);
+
+    return () => window.removeEventListener("hashchange", syncView);
+  }, []);
+
+  useEffect(() => {
+    writeJsonStorage(cartStorageKey, cartItems);
+  }, [cartItems]);
+
+  useEffect(() => {
+    if (view !== "shop") window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [view]);
+
+  useEffect(() => {
+    if (!selectedProduct && !isCartOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setSelectedProduct(null);
+        setIsCartOpen(false);
+      }
+    };
+
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", closeOnEscape);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [selectedProduct, isCartOpen]);
+
+  function navigateTo(nextView: AppView) {
+    const hashByView: Record<AppView, string> = {
+      shop: "catalogo",
+      checkout: "checkout",
+      payment: "pagamento",
+      success: "ordine-completato",
+      admin: "admin",
+    };
+
+    window.location.hash = hashByView[nextView];
+    setView(nextView);
+  }
 
   function openProduct(product: Product) {
     setSelectedMediaIndex(0);
+    setSelectedOptionId(product.options[0].id);
     setSelectedProduct(product);
   }
 
-  return (
-    <>
-      <div className="announcement-bar">
-        <span>Catalogo artigianale profumato</span>
-        <a href={createWhatsAppLink()} target="_blank" rel="noreferrer">
-          Ordini WhatsApp
-        </a>
-      </div>
+  function addToCart(product: Product, optionId: string, quantity = 1) {
+    setCartItems((items) => {
+      const itemExists = items.some((item) => item.productId === product.id && item.optionId === optionId);
 
-      <header className="site-header">
-        <a className="brand" href="#top" aria-label="Adornabile home">
-          <span className="brand-mark">A</span>
-          <span>
-            <strong>Adornabile</strong>
-            <small>Catalogo</small>
-          </span>
-        </a>
+      if (itemExists) {
+        return items.map((item) =>
+          item.productId === product.id && item.optionId === optionId
+            ? { ...item, quantity: Math.min(99, item.quantity + quantity) }
+            : item,
+        );
+      }
 
-        <nav className="main-nav" aria-label="Navigazione principale">
-          <a href="#catalogo">Catalogo</a>
-          <a href="#palette">Palette</a>
-          <a href="#atelier">Personalizzazioni</a>
-          <a href="#ordini">Ordini</a>
-        </nav>
+      return [...items, { productId: product.id, optionId, quantity }];
+    });
+    setIsCartOpen(true);
+  }
 
-        <a className="header-order" href={createWhatsAppLink()} target="_blank" rel="noreferrer">
-          <MessageCircle size={19} aria-hidden="true" />
-          Ordina ora
-        </a>
-      </header>
+  function changeCartQuantity(productId: string, optionId: string, delta: number) {
+    setCartItems((items) =>
+      items
+        .map((item) =>
+          item.productId === productId && item.optionId === optionId
+            ? { ...item, quantity: Math.max(1, Math.min(99, item.quantity + delta)) }
+            : item,
+        )
+        .filter((item) => item.quantity > 0),
+    );
+  }
 
+  function removeCartItem(productId: string, optionId: string) {
+    setCartItems((items) => items.filter((item) => item.productId !== productId || item.optionId !== optionId));
+  }
+
+  function updateCheckoutField<Key extends keyof CheckoutForm>(key: Key, value: CheckoutForm[Key]) {
+    setCheckoutForm((form) => ({ ...form, [key]: value }));
+  }
+
+  async function handleCheckoutSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!cartLines.length) return;
+
+    setCheckoutError("");
+    setIsSubmittingCheckout(true);
+
+    const payload = {
+      items: cartItems,
+      customer: checkoutForm,
+    };
+
+    try {
+      const response = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        throw new Error((await response.text()).slice(0, 180) || "Checkout non disponibile.");
+      }
+
+      const data = (await response.json()) as CheckoutResponse;
+      saveOrderLocally(data.order);
+      setCurrentOrder(data.order);
+      setCartItems([]);
+      setIsCartOpen(false);
+
+      if (data.checkoutUrl.startsWith("http")) {
+        window.location.href = data.checkoutUrl;
+      } else {
+        window.location.href = data.checkoutUrl;
+      }
+    } catch {
+      const localOrder = createLocalOrder(cartItems, checkoutForm);
+      saveOrderLocally(localOrder);
+      setCurrentOrder(localOrder);
+      setCartItems([]);
+      setIsCartOpen(false);
+      setCheckoutError("");
+      navigateTo("payment");
+    } finally {
+      setIsSubmittingCheckout(false);
+    }
+  }
+
+  async function loadAdminOrders(credentials = adminLogin) {
+    setAdminLoading(true);
+    setAdminError("");
+
+    try {
+      const response = await fetch("/api/admin/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(credentials),
+      });
+
+      if (!response.ok) throw new Error("Credenziali non valide o server non disponibile.");
+
+      const data = (await response.json()) as { orders: OrderRecord[] };
+      setAdminOrders(data.orders);
+      setIsAdminAuthenticated(true);
+    } catch {
+      setAdminError("Accesso non riuscito. Controlla credenziali e server ecommerce.");
+    } finally {
+      setAdminLoading(false);
+    }
+  }
+
+  function handleAdminSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    void loadAdminOrders();
+  }
+
+  function logoutAdmin() {
+    setIsAdminAuthenticated(false);
+    setAdminOrders([]);
+    setAdminLogin({ username: "", password: "" });
+  }
+
+  function renderShop() {
+    return (
       <main id="top">
         <section className="hero" aria-label="Catalogo Adornabile">
           <img className="hero-image" src="/assets/catalog/essenza-pura-1.jpeg" alt="Bouquet profumato Essenza Pura" />
@@ -263,10 +636,10 @@ export default function App() {
                 <Sparkles size={19} aria-hidden="true" />
                 Sfoglia i prodotti
               </a>
-              <a className="secondary-link" href={createWhatsAppLink()} target="_blank" rel="noreferrer">
-                <MessageCircle size={19} aria-hidden="true" />
-                Ordina ora
-              </a>
+              <button className="secondary-link" type="button" onClick={() => setIsCartOpen(true)}>
+                <ShoppingCart size={19} aria-hidden="true" />
+                Apri carrello
+              </button>
             </div>
           </div>
         </section>
@@ -282,7 +655,7 @@ export default function App() {
           </div>
           <div>
             <PackageCheck size={23} aria-hidden="true" />
-            <span>Creazioni per occasioni speciali</span>
+            <span>Checkout e ordine tracciato</span>
           </div>
         </section>
 
@@ -290,11 +663,11 @@ export default function App() {
           <div className="section-heading">
             <div>
               <p className="eyebrow">Portfolio prodotti</p>
-              <h2>Un catalogo essenziale, pensato per scegliere e ordinare in chat.</h2>
+              <h2>Scegli il prodotto, aggiungilo al carrello e completa l'ordine online.</h2>
             </div>
             <p>
-              Una selezione curata di bouquet e dettagli floreali pensata per occasioni speciali e
-              composizioni personali.
+              Il checkout raccoglie i dati di spedizione e prepara il pagamento. Per dettagli su colori,
+              quantità o richieste speciali puoi sempre scrivere ad Adornabile.
             </p>
           </div>
 
@@ -329,7 +702,11 @@ export default function App() {
             {filteredProducts.map((product) => (
               <article className="product-card" key={product.id}>
                 <div className="product-media">
-                  <img src={product.images[0]} alt={product.title} style={{ objectPosition: product.imagePosition }} />
+                  <img
+                    src={product.images[0]}
+                    alt={product.title}
+                    style={{ objectFit: product.imageFit, objectPosition: product.imagePosition }}
+                  />
                   <span className="product-category">{product.category}</span>
                   <span className="product-availability">
                     <Clock size={14} aria-hidden="true" />
@@ -367,10 +744,14 @@ export default function App() {
                       <Eye size={18} aria-hidden="true" />
                       Scopri
                     </button>
-                    <a className="order-link" href={createWhatsAppLink(product)} target="_blank" rel="noreferrer">
-                      <MessageCircle size={18} aria-hidden="true" />
-                      Ordina ora
-                    </a>
+                    <button
+                      className="order-link"
+                      type="button"
+                      onClick={() => addToCart(product, product.options[0].id)}
+                    >
+                      <ShoppingBag size={18} aria-hidden="true" />
+                      Aggiungi
+                    </button>
                   </div>
                 </div>
               </article>
@@ -448,8 +829,8 @@ export default function App() {
                 palette base
               </span>
               <span>
-                <strong>1</strong>
-                chat per ordinare
+                <strong>{cartCount}</strong>
+                nel carrello
               </span>
             </div>
           </div>
@@ -458,20 +839,443 @@ export default function App() {
         <section className="order-section" id="ordini">
           <img src="/assets/catalog/essenza-pura-3.jpeg" alt="Bouquet profumato Essenza Pura" />
           <div>
-            <p className="eyebrow">Ordini WhatsApp</p>
-            <h2>Un ordine semplice, personale, seguito in chat.</h2>
+            <p className="eyebrow">Checkout</p>
+            <h2>Dati di spedizione raccolti prima del pagamento.</h2>
             <p>
-              Scrivi direttamente ad Adornabile per definire prodotto, colori, quantità e tempi di
-              consegna con un messaggio già predisposto.
+              Ogni ordine include riepilogo prodotti, contatti, indirizzo e richieste speciali. Gli ordini
+              restano consultabili dall'area admin.
             </p>
-            <a className="primary-link" href={createWhatsAppLink()} target="_blank" rel="noreferrer">
-              <MessageCircle size={19} aria-hidden="true" />
-              Ordina ora
+            <button className="primary-link" type="button" onClick={() => setIsCartOpen(true)}>
+              <ShoppingCart size={19} aria-hidden="true" />
+              Vai al carrello
               <ArrowRight size={19} aria-hidden="true" />
-            </a>
+            </button>
           </div>
         </section>
       </main>
+    );
+  }
+
+  function renderCheckout() {
+    return (
+      <main className="commerce-page">
+        <section className="commerce-shell">
+          <button className="back-link" type="button" onClick={() => navigateTo("shop")}>
+            <ArrowRight size={17} aria-hidden="true" />
+            Torna al catalogo
+          </button>
+
+          <div className="commerce-heading">
+            <p className="eyebrow">Checkout</p>
+            <h1>Completa i dati di spedizione</h1>
+            <p>Il pagamento viene aperto dopo la conferma dell'ordine.</p>
+          </div>
+
+          {cartLines.length > 0 ? (
+            <div className="checkout-layout">
+              <form className="checkout-form" onSubmit={handleCheckoutSubmit}>
+                <div className="form-section">
+                  <h2>Contatti</h2>
+                  <div className="form-grid">
+                    <label>
+                      Nome e cognome
+                      <input
+                        required
+                        value={checkoutForm.fullName}
+                        onChange={(event) => updateCheckoutField("fullName", event.target.value)}
+                        autoComplete="name"
+                      />
+                    </label>
+                    <label>
+                      Email
+                      <input
+                        required
+                        type="email"
+                        value={checkoutForm.email}
+                        onChange={(event) => updateCheckoutField("email", event.target.value)}
+                        autoComplete="email"
+                      />
+                    </label>
+                    <label>
+                      Telefono
+                      <input
+                        required
+                        type="tel"
+                        value={checkoutForm.phone}
+                        onChange={(event) => updateCheckoutField("phone", event.target.value)}
+                        autoComplete="tel"
+                      />
+                    </label>
+                  </div>
+                </div>
+
+                <div className="form-section">
+                  <h2>Spedizione</h2>
+                  <div className="form-grid">
+                    <label className="span-2">
+                      Indirizzo
+                      <input
+                        required
+                        value={checkoutForm.address}
+                        onChange={(event) => updateCheckoutField("address", event.target.value)}
+                        autoComplete="street-address"
+                      />
+                    </label>
+                    <label>
+                      Città
+                      <input
+                        required
+                        value={checkoutForm.city}
+                        onChange={(event) => updateCheckoutField("city", event.target.value)}
+                        autoComplete="address-level2"
+                      />
+                    </label>
+                    <label>
+                      Provincia
+                      <input
+                        required
+                        value={checkoutForm.province}
+                        onChange={(event) => updateCheckoutField("province", event.target.value)}
+                        autoComplete="address-level1"
+                      />
+                    </label>
+                    <label>
+                      CAP
+                      <input
+                        required
+                        value={checkoutForm.postalCode}
+                        onChange={(event) => updateCheckoutField("postalCode", event.target.value)}
+                        autoComplete="postal-code"
+                      />
+                    </label>
+                    <label>
+                      Paese
+                      <input
+                        required
+                        value={checkoutForm.country}
+                        onChange={(event) => updateCheckoutField("country", event.target.value)}
+                        autoComplete="country-name"
+                      />
+                    </label>
+                  </div>
+                  <label>
+                    Note per consegna o disponibilità
+                    <textarea
+                      value={checkoutForm.deliveryNotes}
+                      onChange={(event) => updateCheckoutField("deliveryNotes", event.target.value)}
+                      rows={3}
+                    />
+                  </label>
+                </div>
+
+                <div className="form-section">
+                  <h2>Extra</h2>
+                  <label className="checkbox-field">
+                    <input
+                      type="checkbox"
+                      checked={checkoutForm.premiumPackaging}
+                      onChange={(event) => updateCheckoutField("premiumPackaging", event.target.checked)}
+                    />
+                    <span>Confezione premium con scatola rigida e nastro</span>
+                  </label>
+                  <label>
+                    Dedica personalizzata
+                    <textarea
+                      value={checkoutForm.dedication}
+                      onChange={(event) => updateCheckoutField("dedication", event.target.value)}
+                      rows={3}
+                    />
+                  </label>
+                  <label>
+                    Topper a tema
+                    <input
+                      value={checkoutForm.topperTheme}
+                      onChange={(event) => updateCheckoutField("topperTheme", event.target.value)}
+                      placeholder="Es. battesimo, laurea, compleanno"
+                    />
+                  </label>
+                </div>
+
+                {checkoutError && <p className="form-error">{checkoutError}</p>}
+
+                <button className="checkout-button" type="submit" disabled={isSubmittingCheckout}>
+                  <CreditCard size={19} aria-hidden="true" />
+                  {isSubmittingCheckout ? "Preparazione pagamento..." : "Vai al pagamento"}
+                </button>
+              </form>
+
+              <aside className="summary-panel" aria-label="Riepilogo ordine">
+                <h2>Riepilogo</h2>
+                <div className="summary-items">
+                  {cartLines.map((line) => (
+                    <div className="summary-item" key={`${line.product.id}-${line.option.id}`}>
+                      <img src={line.product.images[0]} alt="" />
+                      <div>
+                        <strong>{line.product.title}</strong>
+                        <span>
+                          {line.option.label} • Quantità {line.quantity}
+                        </span>
+                      </div>
+                      <b>{formatCurrency(line.lineTotalCents)}</b>
+                    </div>
+                  ))}
+                </div>
+                <div className="summary-totals">
+                  <span>
+                    Subtotale <strong>{formatCurrency(cartSubtotalCents)}</strong>
+                  </span>
+                  <span>
+                    Spedizione <strong>{getShippingNote(cartSubtotalCents)}</strong>
+                  </span>
+                  <span className="grand-total">
+                    Totale prodotti <strong>{formatCurrency(cartSubtotalCents)}</strong>
+                  </span>
+                </div>
+              </aside>
+            </div>
+          ) : (
+            <div className="empty-commerce">
+              <ShoppingCart size={30} aria-hidden="true" />
+              <h2>Il carrello è vuoto</h2>
+              <button className="primary-link" type="button" onClick={() => navigateTo("shop")}>
+                Sfoglia catalogo
+              </button>
+            </div>
+          )}
+        </section>
+      </main>
+    );
+  }
+
+  function renderPayment() {
+    return (
+      <main className="commerce-page">
+        <section className="payment-card">
+          <CreditCard size={36} aria-hidden="true" />
+          <p className="eyebrow">Pagamento</p>
+          <h1>Ordine ricevuto</h1>
+          <p>
+            {visibleOrder
+              ? `Abbiamo salvato l'ordine ${visibleOrder.id}. Il pagamento online sarà aperto appena Stripe sarà configurato sul server.`
+              : "Il modulo di pagamento è pronto per Stripe Checkout e verrà attivato con la chiave del conto Stripe."}
+          </p>
+
+          {visibleOrder && (
+            <div className="payment-summary">
+              <span>
+                Totale prodotti <strong>{formatCurrency(visibleOrder.totalCents)}</strong>
+              </span>
+              <span>
+                Stato <strong>{visibleOrder.status}</strong>
+              </span>
+              <span>
+                Spedizione <strong>{visibleOrder.shippingNote}</strong>
+              </span>
+            </div>
+          )}
+
+          <div className="payment-actions">
+            <a className="primary-link" href={createWhatsAppLink(undefined, visibleOrder ?? undefined)} target="_blank" rel="noreferrer">
+              <MessageCircle size={19} aria-hidden="true" />
+              Conferma su WhatsApp
+            </a>
+            <button className="secondary-action" type="button" onClick={() => navigateTo("shop")}>
+              Torna al catalogo
+            </button>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
+  function renderSuccess() {
+    const order = visibleOrder;
+
+    return (
+      <main className="commerce-page">
+        <section className="payment-card success">
+          <ShieldCheck size={38} aria-hidden="true" />
+          <p className="eyebrow">Ordine completato</p>
+          <h1>Grazie per il tuo ordine</h1>
+          <p>
+            {order
+              ? `Ordine ${order.id} registrato correttamente. Riceverai conferma sui dettagli di spedizione.`
+              : "Il pagamento è stato completato e l'ordine è stato registrato."}
+          </p>
+          <button className="primary-link" type="button" onClick={() => navigateTo("shop")}>
+            Torna al catalogo
+          </button>
+        </section>
+      </main>
+    );
+  }
+
+  function renderAdmin() {
+    if (!isAdminAuthenticated) {
+      return (
+        <main className="commerce-page">
+          <section className="admin-page narrow">
+            <div className="commerce-heading">
+              <p className="eyebrow">Area admin</p>
+              <h1>Accesso ordini</h1>
+              <p>Inserisci le credenziali per consultare gli ordini ricevuti.</p>
+            </div>
+
+            <form className="admin-login" onSubmit={handleAdminSubmit}>
+              <label>
+                Username
+                <input
+                  required
+                  value={adminLogin.username}
+                  onChange={(event) => setAdminLogin((login) => ({ ...login, username: event.target.value }))}
+                  autoComplete="username"
+                />
+              </label>
+              <label>
+                Password
+                <input
+                  required
+                  type="password"
+                  value={adminLogin.password}
+                  onChange={(event) => setAdminLogin((login) => ({ ...login, password: event.target.value }))}
+                  autoComplete="current-password"
+                />
+              </label>
+              {adminError && <p className="form-error">{adminError}</p>}
+              <button className="checkout-button" type="submit" disabled={adminLoading}>
+                <Lock size={18} aria-hidden="true" />
+                {adminLoading ? "Accesso..." : "Entra"}
+              </button>
+            </form>
+          </section>
+        </main>
+      );
+    }
+
+    return (
+      <main className="commerce-page">
+        <section className="admin-page">
+          <div className="admin-toolbar">
+            <div className="commerce-heading">
+              <p className="eyebrow">Area admin</p>
+              <h1>Ordini ricevuti</h1>
+              <p>{adminOrders.length} ordini salvati.</p>
+            </div>
+            <div>
+              <button className="secondary-action" type="button" onClick={() => void loadAdminOrders()}>
+                <ClipboardList size={18} aria-hidden="true" />
+                Aggiorna
+              </button>
+              <button className="secondary-action" type="button" onClick={logoutAdmin}>
+                <LogOut size={18} aria-hidden="true" />
+                Esci
+              </button>
+            </div>
+          </div>
+
+          {adminOrders.length > 0 ? (
+            <div className="orders-list">
+              {adminOrders.map((order) => (
+                <article className="order-card" key={order.id}>
+                  <div className="order-card-head">
+                    <div>
+                      <strong>{order.id}</strong>
+                      <span>{formatDate(order.createdAt)}</span>
+                    </div>
+                    <span className="status-pill">{order.status}</span>
+                  </div>
+
+                  <div className="order-columns">
+                    <div>
+                      <h2>Cliente</h2>
+                      <p>{order.customer.fullName}</p>
+                      <p>{order.customer.email}</p>
+                      <p>{order.customer.phone}</p>
+                    </div>
+                    <div>
+                      <h2>Spedizione</h2>
+                      <p>{order.customer.address}</p>
+                      <p>
+                        {order.customer.postalCode} {order.customer.city} ({order.customer.province})
+                      </p>
+                      <p>{order.customer.country}</p>
+                    </div>
+                    <div>
+                      <h2>Pagamento</h2>
+                      <p>{order.paymentProvider}</p>
+                      <p>{order.shippingNote}</p>
+                      <p>
+                        <strong>{formatCurrency(order.totalCents)}</strong>
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="order-lines">
+                    {order.items.map((item) => (
+                      <span key={`${order.id}-${item.productId}-${item.optionId}`}>
+                        {item.productTitle} • {item.optionLabel} • x{item.quantity} •{" "}
+                        {formatCurrency(item.lineTotalCents)}
+                      </span>
+                    ))}
+                  </div>
+
+                  {(order.customer.premiumPackaging || order.customer.dedication || order.customer.topperTheme || order.customer.deliveryNotes) && (
+                    <div className="order-notes">
+                      {order.customer.premiumPackaging && <span>Confezione premium richiesta</span>}
+                      {order.customer.dedication && <span>Dedica: {order.customer.dedication}</span>}
+                      {order.customer.topperTheme && <span>Topper: {order.customer.topperTheme}</span>}
+                      {order.customer.deliveryNotes && <span>Note: {order.customer.deliveryNotes}</span>}
+                    </div>
+                  )}
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="empty-commerce">
+              <ClipboardList size={30} aria-hidden="true" />
+              <h2>Nessun ordine ancora registrato</h2>
+            </div>
+          )}
+        </section>
+      </main>
+    );
+  }
+
+  return (
+    <>
+      <div className="announcement-bar">
+        <span>Spedizione gratuita da 80€</span>
+        <a href="#admin">Area admin</a>
+      </div>
+
+      <header className="site-header">
+        <a className="brand" href="#top" aria-label="Adornabile home" onClick={() => setView("shop")}>
+          <span className="brand-mark">A</span>
+          <span>
+            <strong>Adornabile</strong>
+            <small>Catalogo</small>
+          </span>
+        </a>
+
+        <nav className="main-nav" aria-label="Navigazione principale">
+          <a href="#catalogo">Catalogo</a>
+          <a href="#palette">Palette</a>
+          <a href="#atelier">Personalizzazioni</a>
+          <a href="#ordini">Ordini</a>
+        </nav>
+
+        <button className="header-order cart-button" type="button" onClick={() => setIsCartOpen(true)}>
+          <ShoppingCart size={19} aria-hidden="true" />
+          Carrello
+          <span className="cart-count">{cartCount}</span>
+        </button>
+      </header>
+
+      {view === "shop" && renderShop()}
+      {view === "checkout" && renderCheckout()}
+      {view === "payment" && renderPayment()}
+      {view === "success" && renderSuccess()}
+      {view === "admin" && renderAdmin()}
 
       <footer className="footer">
         <strong>Adornabile Handmade</strong>
@@ -482,7 +1286,87 @@ export default function App() {
         </a>
       </footer>
 
-      {selectedProduct && (
+      {isCartOpen && (
+        <div className="cart-backdrop" onClick={() => setIsCartOpen(false)}>
+          <aside className="cart-drawer" aria-label="Carrello" onClick={(event) => event.stopPropagation()}>
+            <div className="cart-header">
+              <div>
+                <span>Carrello</span>
+                <strong>{cartCount} prodotti</strong>
+              </div>
+              <button type="button" onClick={() => setIsCartOpen(false)} aria-label="Chiudi carrello" title="Chiudi">
+                <X size={21} aria-hidden="true" />
+              </button>
+            </div>
+
+            {cartLines.length > 0 ? (
+              <>
+                <div className="cart-items">
+                  {cartLines.map((line) => (
+                    <article className="cart-item" key={`${line.product.id}-${line.option.id}`}>
+                      <img src={line.product.images[0]} alt="" />
+                      <div>
+                        <h3>{line.product.title}</h3>
+                        <p>{line.option.label}</p>
+                        <strong>{formatCurrency(line.lineTotalCents)}</strong>
+                        <div className="quantity-control">
+                          <button type="button" onClick={() => changeCartQuantity(line.product.id, line.option.id, -1)}>
+                            <Minus size={15} aria-hidden="true" />
+                          </button>
+                          <span>{line.quantity}</span>
+                          <button type="button" onClick={() => changeCartQuantity(line.product.id, line.option.id, 1)}>
+                            <Plus size={15} aria-hidden="true" />
+                          </button>
+                          <button
+                            className="remove-item"
+                            type="button"
+                            onClick={() => removeCartItem(line.product.id, line.option.id)}
+                            aria-label={`Rimuovi ${line.product.title}`}
+                            title="Rimuovi"
+                          >
+                            <Trash2 size={15} aria-hidden="true" />
+                          </button>
+                        </div>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+
+                <div className="cart-summary">
+                  <span>
+                    Subtotale <strong>{formatCurrency(cartSubtotalCents)}</strong>
+                  </span>
+                  <span>
+                    <Truck size={17} aria-hidden="true" />
+                    {getShippingNote(cartSubtotalCents)}
+                  </span>
+                  <button
+                    className="checkout-button"
+                    type="button"
+                    onClick={() => {
+                      setIsCartOpen(false);
+                      navigateTo("checkout");
+                    }}
+                  >
+                    <CreditCard size={18} aria-hidden="true" />
+                    Procedi al checkout
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div className="empty-cart">
+                <ShoppingBag size={30} aria-hidden="true" />
+                <p>Il carrello è vuoto.</p>
+                <button type="button" onClick={() => setIsCartOpen(false)}>
+                  Continua lo shopping
+                </button>
+              </div>
+            )}
+          </aside>
+        </div>
+      )}
+
+      {selectedProduct && selectedOption && (
         <div className="product-modal-backdrop" onClick={() => setSelectedProduct(null)}>
           <section
             className="product-modal"
@@ -560,7 +1444,7 @@ export default function App() {
               <div className="modal-purchase-info">
                 <div>
                   <span>Prezzo</span>
-                  <strong>{selectedProduct.price}</strong>
+                  <strong>{formatCurrency(selectedOption.priceCents)}</strong>
                 </div>
                 <div>
                   <span>Disponibilità</span>
@@ -570,6 +1454,25 @@ export default function App() {
                   </strong>
                 </div>
               </div>
+
+              {selectedProduct.options.length > 1 && (
+                <div className="variant-options" aria-label="Varianti prodotto">
+                  <span>Formato</span>
+                  <div>
+                    {selectedProduct.options.map((option) => (
+                      <button
+                        className={selectedOption.id === option.id ? "active" : ""}
+                        type="button"
+                        key={option.id}
+                        onClick={() => setSelectedOptionId(option.id)}
+                      >
+                        {option.label}
+                        <strong>{formatCurrency(option.priceCents)}</strong>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div className="modal-addons" aria-label="Servizi aggiuntivi disponibili">
                 <span>Extra disponibili</span>
@@ -583,14 +1486,21 @@ export default function App() {
                 </ul>
               </div>
 
-              <a
+              <button
                 className="modal-order-link"
-                href={createWhatsAppLink(selectedProduct)}
-                target="_blank"
-                rel="noreferrer"
+                type="button"
+                onClick={() => {
+                  addToCart(selectedProduct, selectedOption.id);
+                  setSelectedProduct(null);
+                }}
               >
-                <MessageCircle size={20} aria-hidden="true" />
-                Ordina ora su WhatsApp
+                <ShoppingCart size={20} aria-hidden="true" />
+                Aggiungi al carrello
+              </button>
+
+              <a className="modal-whatsapp-link" href={createWhatsAppLink(selectedProduct)} target="_blank" rel="noreferrer">
+                <MessageCircle size={18} aria-hidden="true" />
+                Domanda su WhatsApp
               </a>
 
               <p className="modal-detail">{selectedProduct.detail}</p>
@@ -605,7 +1515,6 @@ export default function App() {
                   <dd>{selectedProduct.note}</dd>
                 </div>
               </dl>
-
             </div>
           </section>
         </div>
