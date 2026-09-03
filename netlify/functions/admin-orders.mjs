@@ -9,8 +9,12 @@ export const handler = async (event) => {
     const payload = readJson(event);
     const username = readText(payload.username, 80);
     const password = readText(payload.password, 120);
-    const adminUsername = process.env.ADMIN_USERNAME ?? "adornabile";
-    const adminPassword = process.env.ADMIN_PASSWORD ?? "valeria8";
+    const adminUsername = process.env.ADMIN_USERNAME;
+    const adminPassword = process.env.ADMIN_PASSWORD;
+
+    if (!adminUsername || !adminPassword) {
+      return respond(500, { error: "Area admin non configurata." });
+    }
 
     if (username !== adminUsername || password !== adminPassword) {
       return respond(401, { error: "Credenziali non valide." });

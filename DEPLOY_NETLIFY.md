@@ -27,8 +27,8 @@ Nel pannello Netlify vai in `Site configuration` → `Environment variables` e a
 STRIPE_SECRET_KEY=la tua chiave secret Stripe
 STRIPE_PUBLISHABLE_KEY=la tua chiave pubblica Stripe
 PUBLIC_SITE_URL=https://nome-sito.netlify.app
-ADMIN_USERNAME=adornabile
-ADMIN_PASSWORD=valeria8
+ADMIN_USERNAME=il tuo username admin
+ADMIN_PASSWORD=la tua password admin
 ```
 
 La variabile `STRIPE_WEBHOOK_SECRET` si aggiunge dopo aver creato il webhook Stripe.
@@ -72,12 +72,7 @@ L'area admin non è mostrata nel menu pubblico. Si apre manualmente da:
 https://nome-sito.netlify.app/#admin
 ```
 
-Credenziali:
-
-```text
-Username: adornabile
-Password: valeria8
-```
+Usa le credenziali impostate nelle variabili ambiente `ADMIN_USERNAME` e `ADMIN_PASSWORD`.
 
 ## Nota importante
 

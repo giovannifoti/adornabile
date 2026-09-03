@@ -17,8 +17,8 @@ await loadEnvFiles([".env", "prova.env"]);
 
 const port = Number(process.env.PORT ?? 4173);
 const host = process.env.HOST ?? "0.0.0.0";
-const adminUsername = process.env.ADMIN_USERNAME ?? "adornabile";
-const adminPassword = process.env.ADMIN_PASSWORD ?? "valeria8";
+const adminUsername = process.env.ADMIN_USERNAME;
+const adminPassword = process.env.ADMIN_PASSWORD;
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
 const stripeWebhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 const stripe = stripeSecretKey ? new Stripe(stripeSecretKey) : null;
@@ -238,6 +238,11 @@ async function handleApi(request, response, url) {
   }
 
   if (request.method === "POST" && url.pathname === "/api/admin/orders") {
+    if (!adminUsername || !adminPassword) {
+      sendJson(response, 500, { error: "Area admin non configurata." });
+      return;
+    }
+
     const payload = await readRequestJson(request);
     const username = readText(payload.username, 80);
     const password = readText(payload.password, 120);

@@ -5,6 +5,7 @@
 
 [build.environment]
   NODE_VERSION = "24.16.0"
+  SECRETS_SCAN_OMIT_KEYS = "ADMIN_USERNAME,PUBLIC_SITE_URL"
 
 [functions]
   included_files = ["netlify/lib/**"]
