@@ -1,13 +1,23 @@
 # Adornabile Handmade
 
-Ecommerce demo per candele artigianali, realizzato con React e Vite.
+Ecommerce per bouquet in cera profumata Adornabile, realizzato con React, Vite, Stripe Checkout e area admin ordini.
 
-## Comandi
+## Comandi locali
 
 ```bash
 npm install
-npm run dev
-npm run build
+npm run server
 ```
 
-Il sito include catalogo filtrabile, carrello persistente, calcolo spedizione e checkout locale dimostrativo.
+Il sito locale si apre su `http://localhost:4173`.
+
+## Pubblicazione
+
+La pubblicazione gratuita è configurata per Netlify con:
+
+- frontend statico in `dist`
+- API in `netlify/functions`
+- ordini salvati con Netlify Blobs
+- pagamenti tramite Stripe Checkout
+
+I passaggi sono in `DEPLOY_NETLIFY.md`.

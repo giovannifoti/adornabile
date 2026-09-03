@@ -279,7 +279,7 @@ function formatCurrency(cents: number) {
     style: "currency",
     currency: "EUR",
     maximumFractionDigits: 0,
-  }).format(cents);
+  }).format(cents / 100);
 }
 
 function formatDate(value: string) {
