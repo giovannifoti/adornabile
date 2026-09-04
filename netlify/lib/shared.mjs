@@ -1,4 +1,4 @@
-import { getStore } from "@netlify/blobs";
+import { connectLambda, getStore } from "@netlify/blobs";
 import crypto from "node:crypto";
 import Stripe from "stripe";
 
@@ -146,6 +146,10 @@ export function getRequestOrigin(event) {
 
 export function createStripeClient() {
   return process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
+}
+
+export function connectNetlifyBlobs(event) {
+  connectLambda(event);
 }
 
 export async function readOrders() {

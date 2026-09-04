@@ -1,4 +1,4 @@
-import { readJson, readOrders, readText, respond } from "../lib/shared.mjs";
+import { connectNetlifyBlobs, readJson, readOrders, readText, respond } from "../lib/shared.mjs";
 
 export const handler = async (event) => {
   if (event.httpMethod !== "POST") {
@@ -6,6 +6,8 @@ export const handler = async (event) => {
   }
 
   try {
+    connectNetlifyBlobs(event);
+
     const payload = readJson(event);
     const username = readText(payload.username, 80);
     const password = readText(payload.password, 120);

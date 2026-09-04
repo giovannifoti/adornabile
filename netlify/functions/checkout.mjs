@@ -1,4 +1,5 @@
 import {
+  connectNetlifyBlobs,
   createOrderId,
   createStripeClient,
   getRequestOrigin,
@@ -16,6 +17,8 @@ export const handler = async (event) => {
   }
 
   try {
+    connectNetlifyBlobs(event);
+
     const payload = readJson(event);
     const items = validateCartItems(payload.items);
     const customer = validateCustomer(payload.customer);

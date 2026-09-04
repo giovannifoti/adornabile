@@ -1,4 +1,5 @@
 import {
+  connectNetlifyBlobs,
   createStripeClient,
   handleStripeEvent,
   hasProcessedStripeEvent,
@@ -34,6 +35,8 @@ export const handler = async (event) => {
   }
 
   try {
+    connectNetlifyBlobs(event);
+
     if (await hasProcessedStripeEvent(stripeEvent.id)) {
       return respond(200, { received: true, duplicate: true });
     }
