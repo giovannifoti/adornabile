@@ -289,13 +289,24 @@ function formatDate(value: string) {
   }).format(new Date(value));
 }
 
-function resolveViewFromHash(hash: string): AppView {
-  const cleanHash = hash.replace("#", "").split("?")[0];
+function resolveViewFromLocation(location: Location): AppView {
+  const cleanHash = location.hash.replace("#", "").split("?")[0];
 
-  if (cleanHash === "checkout") return "checkout";
-  if (cleanHash === "pagamento") return "payment";
-  if (cleanHash === "ordine-completato") return "success";
-  if (cleanHash === "admin") return "admin";
+  if (cleanHash) {
+    if (cleanHash === "checkout") return "checkout";
+    if (cleanHash === "pagamento") return "payment";
+    if (cleanHash === "ordine-completato") return "success";
+    if (cleanHash === "admin") return "admin";
+
+    return "shop";
+  }
+
+  const cleanPath = location.pathname.replace(/\/+$/, "");
+
+  if (cleanPath === "/checkout") return "checkout";
+  if (cleanPath === "/pagamento") return "payment";
+  if (cleanPath === "/ordine-completato") return "success";
+  if (cleanPath === "/admin") return "admin";
 
   return "shop";
 }
@@ -393,7 +404,7 @@ function findOrderFromHash() {
 }
 
 export default function App() {
-  const [view, setView] = useState<AppView>(() => resolveViewFromHash(window.location.hash));
+  const [view, setView] = useState<AppView>(() => resolveViewFromLocation(window.location));
   const [activeCategory, setActiveCategory] = useState<Category>("Tutti");
   const [query, setQuery] = useState("");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -450,10 +461,14 @@ export default function App() {
   const visibleOrder = currentOrder ?? findOrderFromHash();
 
   useEffect(() => {
-    const syncView = () => setView(resolveViewFromHash(window.location.hash));
+    const syncView = () => setView(resolveViewFromLocation(window.location));
     window.addEventListener("hashchange", syncView);
+    window.addEventListener("popstate", syncView);
 
-    return () => window.removeEventListener("hashchange", syncView);
+    return () => {
+      window.removeEventListener("hashchange", syncView);
+      window.removeEventListener("popstate", syncView);
+    };
   }, []);
 
   useEffect(() => {

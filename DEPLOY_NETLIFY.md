@@ -69,7 +69,7 @@ STRIPE_WEBHOOK_SECRET=whsec_...
 L'area admin non è mostrata nel menu pubblico. Si apre manualmente da:
 
 ```text
-https://nome-sito.netlify.app/#admin
+https://nome-sito.netlify.app/admin
 ```
 
 Usa le credenziali impostate nelle variabili ambiente `ADMIN_USERNAME` e `ADMIN_PASSWORD`.
