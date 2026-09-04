@@ -154,7 +154,7 @@ export function connectNetlifyBlobs(event) {
 
 export async function readOrders() {
   const store = getStore("adornabile-orders");
-  const orders = await store.get("orders", { type: "json", consistency: "strong" });
+  const orders = await store.get("orders", { type: "json" });
   return Array.isArray(orders) ? orders : [];
 }
 
@@ -183,7 +183,7 @@ export async function updateOrderStatus(orderId, status, updates = {}) {
 
 export async function readStripeEvents() {
   const store = getStore("adornabile-stripe-events");
-  const events = await store.get("events", { type: "json", consistency: "strong" });
+  const events = await store.get("events", { type: "json" });
   return Array.isArray(events) ? events : [];
 }
 
